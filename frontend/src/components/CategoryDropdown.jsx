@@ -1,57 +1,58 @@
 import React from 'react';
+import styles from './CategoryDropdown.module.css';
 
-const categories = [
+const columns = [
   {
-    title: 'Fiction & Fantasy',
-    items: [
-      { icon: '🔍', label: 'Mystery & Thriller' },
-      { icon: '🚀', label: 'Science Fiction & Fantasy' },
-      { icon: '❤', label: 'Romance' },
-      { icon: '🧑‍🎓', label: 'Young Adult' },
-      { icon: '📚', label: 'Graphic Novels' },
-      { icon: '📜', label: 'Classic Literature' },
-    ],
+    heading: 'GENRES',
+    items: ['Classic Literature', 'Mystery', 'Thriller', 'Fantasy', 'Self Help'],
   },
-  {
-    title: 'Non-Fiction & Philosophy',
-    items: [
-      { icon: '⏳', label: 'History' },
-      { icon: '👤', label: 'Biography' },
-      { icon: '👶', label: "Children's" },
-      { icon: '🏛️', label: 'Philosophy' },
-      { icon: '🧠', label: 'Self Help' },
-      { icon: '🧘', label: 'Religion & Spirituality' },
-    ],
-  },
-  {
-    title: 'Specialty & More',
-    items: [
-      { icon: '🪶', label: 'Poetry' },
-      { icon: '⭐', label: 'Advanced' },
-      { icon: '🍴', label: 'Cookbooks' },
-      { icon: '📷', label: 'Art & Photography' },
-      { icon: '🌐', label: 'Travel' },
-    ],
-  },
+
 ];
+
+const rightSection = {
+  heading: 'SUGGESTIONS',
+  boxes: [
+    {
+      title: 'Category Not Found?',
+      desc: 'Suggest a new one!',
+    },
+    {
+      title: 'Contact Us',
+      desc: 'Reach out for support or feedback.',
+    },
+  ],
+};
 
 const CategoryDropdown = ({ open }) => {
   if (!open) return null;
   return (
-    <div className="absolute left-1/2 -translate-x-1/2 mt-4 bg-white rounded-2xl shadow-2xl p-12 flex gap-16 z-50 min-w-[700px]">
-      {categories.map((cat) => (
-        <div key={cat.title}>
-          <h3 className="text-xl font-semibold mb-6 text-gray-900">{cat.title}</h3>
-          <ul className="space-y-4">
-            {cat.items.map((item) => (
-              <li key={item.label} className="flex items-center gap-3 text-lg text-gray-700">
-                <span className="text-2xl">{item.icon}</span>
-                {item.label}
-              </li>
-            ))}
-          </ul>
+    <div className={styles['br-dropdown-root']}>
+      <div className={styles['br-dropdown-content']}>
+        <div className={styles['br-dropdown-columns']}>
+          {columns.map((col) => (
+            <div key={col.heading} className={styles['br-dropdown-col']}>
+              <h3 className={styles['br-dropdown-heading']}>{col.heading}</h3>
+              <ul className={styles['br-dropdown-list']}>
+                {col.items.map((item) => (
+                  <li key={item} className={styles['br-dropdown-item']}>
+                    <span className={styles['br-dropdown-label']}>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-      ))}
+        <div className={styles['br-dropdown-divider']} />
+        <div className={styles['br-dropdown-right']}>
+          <h3 className={styles['br-dropdown-right-heading']}>{rightSection.heading}</h3>
+          {rightSection.boxes.map((box) => (
+            <div key={box.title} className={styles['br-dropdown-pro-box']}>
+              <div className={styles['br-dropdown-pro-title']}>{box.title}</div>
+              <div className={styles['br-dropdown-pro-desc']}>{box.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
