@@ -61,7 +61,7 @@ const BrowsePage = () => {
           {/* Content above overlay */}
           <div className="w-full flex flex-col items-center" style={{position: 'relative', zIndex: 2}}>
             <h1 className="text-6xl font-light text-white text-center mb-4" style={{ fontFamily: 'Montserrat, Arial, sans-serif', lineHeight: 1.1 }}>
-              Grab the Book you wish to <br className="hidden md:block" />
+              Find the Book you wish to <br className="hidden md:block" />
               read with ease.
             </h1>
             <p className="text-lg text-white text-center mb-8 max-w-2xl" style={{ fontFamily: 'Montserrat, Arial, sans-serif' }}>
