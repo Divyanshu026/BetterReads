@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import Header from '../components/Header'
+import NavBar from '../components/NavBar'
 import { chatsAPI } from '../services/api'
 import { initSocket, joinChat, leaveChat, sendSocketMessage, onMessage } from '../services/socket'
 import { useAuth } from '../context/AuthContext'
@@ -156,7 +156,7 @@ const ChatPage = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <Header />
+      <NavBar />
       {/* Messages */}
       <div className="flex-1 overflow-y-auto pt-20 pb-24 px-4">
         <div className="max-w-2xl mx-auto space-y-4">

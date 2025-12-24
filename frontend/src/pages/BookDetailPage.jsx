@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import Header from '../components/Header'
+import NavBar from '../components/NavBar'
 import Footer from '../components/Footer'
 import BookCard from '../components/BookCard'
 import { booksAPI, offersAPI, wishlistAPI, chatsAPI } from '../services/api'
@@ -126,7 +126,7 @@ const BookDetailPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <Header />
+        <NavBar />
         <div className="pt-24 px-8">
           <div className="max-w-7xl mx-auto">
             <div className="animate-pulse grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -162,7 +162,7 @@ const BookDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <Header />
+      <NavBar />
       
       {/* Breadcrumb */}
       <div className="pt-24 px-8">

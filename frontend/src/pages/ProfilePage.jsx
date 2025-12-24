@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import Header from '../components/Header'
+import NavBar from '../components/NavBar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import { booksAPI, wishlistAPI, reviewsAPI, usersAPI } from '../services/api'
@@ -95,7 +95,7 @@ const ProfilePage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <Header />
+        <Navbar />
         <div className="pt-24 px-8">
           <div className="max-w-5xl mx-auto">
             <div className="animate-pulse flex gap-8">

@@ -186,7 +186,7 @@ const LandingPage = () => {
                 <Link to="/browse" className={`text-base font-normal transition-colors ${
                   headerState === 'solid' ? 'text-black hover:text-black/70' : 'text-white/90 hover:text-white drop-shadow-sm'
                 }`} style={{ fontFamily: "'Montserrat', sans-serif" }}>Browse Books</Link>
-                <Link to="/community" className={`text-base font-normal transition-colors ${
+                <Link to="/category" className={`text-base font-normal transition-colors ${
                   headerState === 'solid' ? 'text-black hover:text-black/70' : 'text-white/90 hover:text-white drop-shadow-sm'
                 }`} style={{ fontFamily: "'Montserrat', sans-serif" }}>Category</Link>
                 <Link to="/add-book" className={`text-base font-normal transition-colors ${

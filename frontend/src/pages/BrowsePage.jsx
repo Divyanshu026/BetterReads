@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import Footer from '../components/Footer'
 import BookCard from '../components/BookCard'
 import { booksAPI } from '../services/api'
-import Header from '../components/Header'
+import NavBar from '../components/NavBar'
 
 const BrowsePage = () => {
   const { isAuthenticated } = useAuth();
@@ -30,7 +30,7 @@ const BrowsePage = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Constant Header for BrowsePage */}
-      <Header />
+      <NavBar />
       {/* Main content area with background image */}
       <main
         className="flex-1 flex flex-col items-center justify-start pt-[88px] pb-10 overflow-y-auto relative"

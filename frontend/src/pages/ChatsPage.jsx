@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import Header from '../components/Header'
+import NavBar from '../components/NavBar'
 import Footer from '../components/Footer'
 import { chatsAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -50,6 +50,7 @@ const ChatsPage = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Header />
+        <NavBar />
       
       <div className="pt-24 pb-12 px-8 flex-1">
         <div className="max-w-3xl mx-auto">
