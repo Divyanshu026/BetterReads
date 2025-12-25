@@ -60,6 +60,8 @@ export const booksAPI = {
   create: (data) => api.post('/books', data),
   update: (id, data) => api.patch(`/books/${id}`, data),
   delete: (id) => api.delete(`/books/${id}`),
+  // Suggest book titles/authors for autocomplete
+  suggest: (q) => api.get('/books/suggest', { params: { q } }),
 };
 
 // ============ OFFERS ============

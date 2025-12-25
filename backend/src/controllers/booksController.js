@@ -109,4 +109,37 @@ async function deleteBook(req, res) {
 }
 
 // Export controller functions
-module.exports = { createBook, listBooks, getBook, updateBook, deleteBook };
+// GET /api/books/suggest?q=abc — suggest book titles or authors
+async function suggestBooksAuthors(req, res) {
+  try {
+    const { q } = req.query;
+    if (!q || q.length < 1) return res.json([]);
+    // Find books where title or author matches (case-insensitive, partial)
+    const regex = new RegExp(q, 'i');
+    const books = await Book.find({
+      $or: [
+        { title: regex },
+        { author: regex }
+      ]
+    }).limit(10).select('title author');
+    // Return unique suggestions (no duplicates)
+    const suggestions = [];
+    const seen = new Set();
+    books.forEach(b => {
+      if (b.title && !seen.has(b.title)) {
+        suggestions.push({ type: 'title', value: b.title });
+        seen.add(b.title);
+      }
+      if (b.author && !seen.has(b.author)) {
+        suggestions.push({ type: 'author', value: b.author });
+        seen.add(b.author);
+      }
+    });
+    res.json(suggestions);
+  } catch (err) {
+    console.error('Suggest books/authors error:', err);
+    res.status(500).json({ error: { message: err.message } });
+  }
+}
+
+module.exports = { createBook, listBooks, getBook, updateBook, deleteBook, suggestBooksAuthors };

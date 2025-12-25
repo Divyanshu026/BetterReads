@@ -8,6 +8,9 @@ const { requireAuth } = require('../middleware/auth');
 
 // GET /api/books — paginated list with filters
 router.get('/', listBooks);
+
+// Suggestion endpoint for book titles and authors
+router.get('/suggest', require('../controllers/booksController').suggestBooksAuthors);
 // POST /api/books — create a listing (authenticated)
 router.post('/', requireAuth, createBook);
 // GET /api/books/:id — fetch a single book by ID
