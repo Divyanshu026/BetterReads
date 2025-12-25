@@ -49,7 +49,7 @@ const ChatsPage = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <Header />
+      <NavBar />
         <NavBar />
       
       <div className="pt-24 pb-12 px-8 flex-1">
