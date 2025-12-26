@@ -4,6 +4,7 @@ import LandingPage from './pages/LandingPage'
 import BrowsePage from './pages/BrowsePage'
 import BookDetailPage from './pages/BookDetailPage'
 import ProfilePage from './pages/ProfilePage'
+import ResultsPage from './pages/ResultsPage'
 import AddBookPage from './pages/AddBookPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -64,6 +65,7 @@ function AppRoutes() {
       {/* Protected Routes */}
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/profile/:userId" element={<ProfilePage />} />
+      <Route path="/results" element={<ProtectedRoute><ResultsPage /></ProtectedRoute>} />
       <Route path="/add-book" element={<ProtectedRoute><AddBookPage /></ProtectedRoute>} />
       <Route path="/chats" element={<ProtectedRoute><ChatsPage /></ProtectedRoute>} />
       <Route path="/chat/:chatId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />

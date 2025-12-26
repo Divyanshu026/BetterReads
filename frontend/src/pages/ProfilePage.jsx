@@ -156,8 +156,9 @@ const Sidebar = ({ activeSection, onSectionChange, wishlistCount, username, isVe
 // Using the BookCard component from components/BookCard.jsx
 
 // ============== MY BOOKS SECTION ==============
-const MyBooksSection = ({ books, loading }) => {
-  const [activeTab, setActiveTab] = useState('forSale');
+const MyBooksSection = ({ books, loading, user }) => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('myBooks');
 
   const tabs = [
     { key: 'myBooks', label: 'My Books' },
@@ -166,6 +167,66 @@ const MyBooksSection = ({ books, loading }) => {
     { key: 'sold', label: 'Sold' },
     { key: 'traded', label: 'Traded' },
   ];
+
+  const handleTabClick = (tabKey) => {
+    setActiveTab(tabKey);
+  };
+
+  const handleViewAll = () => {
+    let category, value, title;
+    switch (activeTab) {
+      case 'myBooks':
+        category = 'sellerId';
+        value = user.id;
+        title = 'My Books';
+        break;
+      case 'forSale':
+        category = 'type';
+        value = 'forSale';
+        title = 'Books for Sale';
+        break;
+      case 'forTrade':
+        category = 'type';
+        value = 'forTrade';
+        title = 'Books for Trade';
+        break;
+      case 'sold':
+        category = 'status';
+        value = 'sold';
+        title = 'Sold Books';
+        break;
+      case 'traded':
+        category = 'status';
+        value = 'traded';
+        title = 'Traded Books';
+        break;
+      default:
+        return;
+    }
+
+    navigate(`/results?category=${category}&value=${value}&title=${encodeURIComponent(title)}`);
+  };
+
+  // Filter books based on active tab
+  const getFilteredBooks = () => {
+    switch (activeTab) {
+      case 'myBooks':
+        return books;
+      case 'forSale':
+        return books.filter(book => !book.barterAvailable && book.priceCents > 0);
+      case 'forTrade':
+        return books.filter(book => book.barterAvailable);
+      case 'sold':
+        return books.filter(book => book.status === 'sold');
+      case 'traded':
+        return books.filter(book => book.status === 'exchanged');
+      default:
+        return books;
+    }
+  };
+
+  const filteredBooks = getFilteredBooks();
+  const previewBooks = filteredBooks.slice(0, 4); // Show first 4 books
 
   if (loading) {
     return (
@@ -182,7 +243,7 @@ const MyBooksSection = ({ books, loading }) => {
         {tabs.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => handleTabClick(tab.key)}
             className={`px-4 py-3 text-sm font-medium transition-colors relative ${
               activeTab === tab.key
                 ? 'text-orange-600'
@@ -197,17 +258,33 @@ const MyBooksSection = ({ books, loading }) => {
         ))}
       </div>
 
-      {books.length === 0 ? (
+      {previewBooks.length === 0 ? (
         <div className="text-center py-16">
           <Icons.Book className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No books yet</h3>
-          <p className="text-gray-600">Start adding books to your collection</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            No books {activeTab === 'myBooks' ? 'yet' : activeTab === 'forSale' ? 'for sale' : activeTab === 'forTrade' ? 'for trade' : activeTab === 'sold' ? 'sold' : 'traded'}
+          </h3>
+          <p className="text-gray-600">
+            {activeTab === 'myBooks' ? 'Start adding books to your collection' : `You don't have any books ${activeTab === 'forSale' ? 'for sale' : activeTab === 'forTrade' ? 'for trade' : activeTab === 'sold' ? 'sold' : 'traded'} yet`}
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-6">
-          {books.map((book) => (
-            <BookCard key={book._id} book={book} />
-          ))}
+        <div>
+          <div className="grid grid-cols-4 gap-6 mb-6">
+            {previewBooks.map((book) => (
+              <BookCard key={book._id} book={book} />
+            ))}
+          </div>
+          {filteredBooks.length > 0 && (
+            <div className="text-center">
+              <button
+                onClick={handleViewAll}
+                className="px-6 py-2 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                View All ({filteredBooks.length})
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -346,7 +423,7 @@ const ProfilePage = () => {
           <div className="flex-1">
             <div className="bg-white rounded-lg border border-gray-200 p-8">
               {activeSection === SECTIONS.PROFILE && <EditProfileSection />}
-              {activeSection === SECTIONS.MY_BOOKS && <MyBooksSection books={books} loading={loading} />}
+              {activeSection === SECTIONS.MY_BOOKS && <MyBooksSection books={books} loading={loading} user={user} />}
               {activeSection === SECTIONS.WISHLIST && (
                 <div className="text-center py-16">
                   <Icons.Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
