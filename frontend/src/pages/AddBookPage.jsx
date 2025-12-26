@@ -13,7 +13,15 @@ const STEPS = [
 ]
 
 const CONDITIONS = ['New', 'Like New', 'Used']
-const GENRES = ['Fiction', 'Non-Fiction', 'Mystery', 'Sci-Fi', 'Romance', 'Biography', 'Self-Help', 'History', 'Fantasy', 'Horror', 'Classic Literature', 'Other']
+// Sync genres with CategoryDropdown.jsx
+const GENRES = [
+  'Classic Literature',
+  'Mystery',
+  'Thriller',
+  'Fantasy',
+  'Self Help',
+  'Other',
+];
 
 const AddBookPage = () => {
   const navigate = useNavigate()
@@ -27,7 +35,7 @@ const AddBookPage = () => {
   const [formData, setFormData] = useState({
     title: '', author: '', isbn: '', condition: 'Good',
     barterAvailable: true, priceCents: 0, description: '',
-    genre: '', city: user?.city || '', photos: []
+    genre: '', customGenre: '', city: user?.city || '', photos: []
   })
 
   // --- HANDLERS ---
@@ -37,20 +45,42 @@ const AddBookPage = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
+    // Reset customGenre if genre changes away from 'Other'
+    if (name === 'genre' && value !== 'Other') {
+      setFormData(prev => ({ ...prev, customGenre: '' }));
+    }
   }
 
   const handleImageUpload = async (e) => {
-    const files = e.target.files
-    if (!files.length) return
+    const files = e.target.files;
+    if (!files.length) return;
 
-    setUploadingImages(true)
-    const newPhotos = []
-    
-    // Simulate upload or call your API here
-    // const uploadedUrl = await uploadAPI(files[0]) 
-    
-    setUploadingImages(false)
-    // Add to formData...
+    setUploadingImages(true);
+    try {
+      const uploadedPhotos = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        // Read file as base64
+        const reader = new FileReader();
+        const fileRead = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        // Upload to server
+        const res = await uploadAPI.single(fileRead, 'betterreads/books');
+        uploadedPhotos.push(res.data.url);
+      }
+      setFormData(prev => ({
+        ...prev,
+        photos: [...prev.photos, ...uploadedPhotos].slice(0, 5), // max 5
+      }));
+    } catch (err) {
+      console.error('Image upload failed', err);
+      // Optionally show error to user
+    } finally {
+      setUploadingImages(false);
+    }
   }
 
   const removeImage = (idx) => {
@@ -64,7 +94,12 @@ const AddBookPage = () => {
     e.preventDefault()
     setLoading(true)
     try {
-      await booksAPI.create(formData) // Assuming create endpoint exists
+      // Use customGenre if 'Other' is selected
+      const submitData = {
+        ...formData,
+        genre: formData.genre === 'Other' ? formData.customGenre : formData.genre,
+      };
+      await booksAPI.create(submitData)
       navigate('/books')
     } catch (err) {
       console.error(err)
@@ -86,15 +121,25 @@ const AddBookPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Genre</label>
-          <select 
-            name="genre" 
-            value={formData.genre} 
+          <select
+            name="genre"
+            value={formData.genre}
             onChange={handleChange}
             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
           >
             <option value="">Select Genre</option>
             {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
+          {formData.genre === 'Other' && (
+            <input
+              type="text"
+              name="customGenre"
+              value={formData.customGenre}
+              onChange={handleChange}
+              className="mt-2 w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+              placeholder="Enter your genre"
+            />
+          )}
         </div>
         <InputGroup label="ISBN (Optional)" name="isbn" value={formData.isbn} onChange={handleChange} />
       </div>

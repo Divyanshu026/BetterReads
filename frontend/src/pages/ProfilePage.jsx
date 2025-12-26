@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import NavBar from '../components/NavBar';
-import Footer from '../components/Footer';
+import BookCard from '../components/BookCard';
 import { useAuth } from '../context/AuthContext';
-import { booksAPI, wishlistAPI, reviewsAPI, usersAPI } from '../services/api';
+import { booksAPI } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 // ============== CONSTANTS ==============
 const STATUS_STYLES = {
@@ -13,35 +13,20 @@ const STATUS_STYLES = {
   exchanged: 'bg-blue-100 text-blue-700 border border-blue-200',
 };
 
-const TABS = {
-  LISTINGS: 'listings',
+const SECTIONS = {
+  PROFILE: 'profile',
+  MY_BOOKS: 'myBooks',
   WISHLIST: 'wishlist',
-  REVIEWS: 'reviews',
+  ORDER_HISTORY: 'orderHistory',
+  ADDRESSES: 'addresses',
+  VERIFICATION: 'verification',
 };
-
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=300&fit=crop';
-const DEFAULT_BOOK_COVER = 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=400&fit=crop';
 
 // ============== ICONS ==============
 const Icons = {
-  Location: ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
-      <path fillRule="evenodd" d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clipRule="evenodd" />
-    </svg>
-  ),
-  Star: ({ className, filled }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
-      <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clipRule="evenodd" />
-    </svg>
-  ),
-  Plus: ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-    </svg>
-  ),
-  Calendar: ({ className }) => (
+  User: ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
     </svg>
   ),
   Edit: ({ className }) => (
@@ -49,595 +34,393 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
     </svg>
   ),
+  Book: ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+    </svg>
+  ),
+  Heart: ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+    </svg>
+  ),
+  Clock: ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+  ),
+  MapPin: ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.458-7.5 11.458s-7.5-4.316-7.5-11.458a7.5 7.5 0 1 1 15 0Z" />
+    </svg>
+  ),
+  Shield: ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.623 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+    </svg>
+  ),
+  CheckCircle: ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25z" clipRule="evenodd" />
+    </svg>
+  ),
+  Message: ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+    </svg>
+  ),
+  Logout: ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+    </svg>
+  ),
 };
 
-// ============== CUSTOM HOOK ==============
-const useProfileData = (targetUserId, isOwnProfile, isAuthenticated) => {
-  const [data, setData] = useState({
-    profile: null,
-    books: [],
-    wishlist: [],
-    reviews: [],
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+// ============== SIDEBAR ==============
+const Sidebar = ({ activeSection, onSectionChange, wishlistCount, username, isVerified, onLogoutClick }) => {
+  const menuItems = [
+    { key: SECTIONS.PROFILE, label: 'Edit Profile', icon: Icons.Edit },
+    { key: SECTIONS.MY_BOOKS, label: 'My Books', icon: Icons.Book },
+    { key: SECTIONS.WISHLIST, label: 'Wishlist', icon: Icons.Heart, count: wishlistCount },
+    { key: SECTIONS.ORDER_HISTORY, label: 'Order History', icon: Icons.Clock },
+    { key: SECTIONS.ADDRESSES, label: 'Addresses', icon: Icons.MapPin },
+    { key: SECTIONS.VERIFICATION, label: 'Verification', icon: Icons.Shield },
+  ];
 
-  const fetchData = useCallback(async () => {
-    if (!targetUserId) {
-      setError('User not found');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [profileRes, booksRes, reviewsRes] = await Promise.all([
-        usersAPI.getProfile(targetUserId),
-        booksAPI.list({ sellerId: targetUserId }),
-        reviewsAPI.list({ revieweeId: targetUserId }),
-      ]);
-
-      if (!profileRes.data.user) {
-        setError('User not found');
-        return;
-      }
-
-      let wishlistData = [];
-      if (isOwnProfile && isAuthenticated) {
-        try {
-          const wishlistRes = await wishlistAPI.get();
-          wishlistData = wishlistRes.data.wishlist || [];
-        } catch {
-          wishlistData = [];
-        }
-      }
-
-      setData({
-        profile: profileRes.data.user,
-        books: booksRes.data || [],
-        wishlist: wishlistData,
-        reviews: reviewsRes.data.reviews || [],
-      });
-    } catch (err) {
-      setError('Failed to load profile');
-    } finally {
-      setLoading(false);
-    }
-  }, [targetUserId, isOwnProfile, isAuthenticated]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const removeBook = useCallback((bookId) => {
-    setData((prev) => ({
-      ...prev,
-      books: prev.books.filter((b) => b._id !== bookId),
-    }));
-  }, []);
-
-  const removeFromWishlist = useCallback((bookId) => {
-    setData((prev) => ({
-      ...prev,
-      wishlist: prev.wishlist.filter((b) => b._id !== bookId),
-    }));
-  }, []);
-
-  return { ...data, loading, error, removeBook, removeFromWishlist, refetch: fetchData };
-};
-
-// ============== SUB-COMPONENTS ==============
-
-const ProfileSkeleton = () => (
-  <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-    <NavBar />
-    <div className="pt-24 px-4 sm:px-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="animate-pulse">
-          <div className="flex flex-col md:flex-row gap-8">
-            <div className="w-36 h-36 md:w-44 md:h-44 bg-gray-200 rounded-3xl" />
-            <div className="flex-1 space-y-4">
-              <div className="h-10 bg-gray-200 rounded-lg w-48" />
-              <div className="h-5 bg-gray-200 rounded w-64" />
-              <div className="h-20 bg-gray-200 rounded-lg" />
-              <div className="flex gap-4">
-                <div className="h-10 bg-gray-200 rounded-full w-32" />
-                <div className="h-10 bg-gray-200 rounded-full w-24" />
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded-2xl" />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const ErrorState = ({ message }) => (
-  <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-    <NavBar />
-    <div className="pt-32 px-8 text-center">
-      <div className="max-w-md mx-auto">
-        <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-          <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-          </svg>
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{message}</h1>
-        <p className="text-gray-500 mb-6">The profile you're looking for doesn't exist or has been removed.</p>
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-[#1e3a5f] text-white rounded-full hover:bg-[#2a4a73] transition-colors"
-        >
-          Go Home
-        </Link>
-      </div>
-    </div>
-  </div>
-);
-
-const StatCard = ({ value, label, icon, highlight }) => (
-  <div className={`rounded-2xl p-5 text-center transition-all hover:scale-105 ${
-    highlight 
-      ? 'bg-gradient-to-br from-[#f7941d] to-[#e8850f] text-white shadow-lg shadow-orange-200' 
-      : 'bg-white border border-gray-100 shadow-sm hover:shadow-md'
-  }`}>
-    <div className="flex items-center justify-center gap-2 mb-1">
-      {icon}
-      <p className={`text-3xl font-bold ${highlight ? 'text-white' : 'text-[#1e3a5f]'}`}>
-        {value}
-      </p>
-    </div>
-    <p className={`text-sm font-medium ${highlight ? 'text-white/80' : 'text-gray-500'}`}>
-      {label}
-    </p>
-  </div>
-);
-
-const TabButton = ({ active, onClick, children, count }) => (
-  <button
-    onClick={onClick}
-    className={`relative py-4 px-1 text-sm font-semibold capitalize transition-all ${
-      active 
-        ? 'text-[#1e3a5f]' 
-        : 'text-gray-400 hover:text-gray-600'
-    }`}
-  >
-    <span className="flex items-center gap-2">
-      {children}
-      {count !== undefined && (
-        <span className={`text-xs px-2 py-0.5 rounded-full ${
-          active ? 'bg-[#1e3a5f] text-white' : 'bg-gray-100 text-gray-500'
-        }`}>
-          {count}
-        </span>
-      )}
-    </span>
-    {active && (
-      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#f7941d] rounded-full" />
-    )}
-  </button>
-);
-
-const BookCard = ({ book, isOwner, onDelete }) => {
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this book?')) return;
-    setIsDeleting(true);
-    try {
-      await booksAPI.delete(book._id);
-      onDelete(book._id);
-    } catch {
-      alert('Failed to delete book');
-    } finally {
-      setIsDeleting(false);
-    }
+  const handleLogout = () => {
+    onLogoutClick();
   };
 
   return (
-    <div className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-      <Link to={`/book/${book._id}`} className="block aspect-[3/4] relative overflow-hidden">
-        <img
-          src={book.photos?.[0] || DEFAULT_BOOK_COVER}
-          alt={book.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          loading="lazy"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="absolute top-3 right-3">
-          <span className={`px-3 py-1.5 text-xs font-semibold rounded-full backdrop-blur-sm ${STATUS_STYLES[book.status] || STATUS_STYLES.available}`}>
-            {book.status}
-          </span>
+    <div className="w-64 bg-white rounded-lg border border-gray-200">
+      <div className="p-4 bg-gradient-to-r from-orange-400 to-orange-500 rounded-t-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white">
+            <Icons.User className="w-5 h-5" />
+            <span className="font-semibold">{username}</span>
+          </div>
+          {isVerified ? (
+            <span className="px-2 py-1 bg-white/20 text-white text-xs font-medium rounded-full border border-white/30">
+              Verified
+            </span>
+          ) : (
+            <span className="px-2 py-1 bg-red-500/90 text-white text-xs font-medium rounded-full">
+              Not Verified
+            </span>
+          )}
         </div>
-        {book.price && (
-          <div className="absolute bottom-3 left-3 px-3 py-1.5 bg-white/95 backdrop-blur-sm rounded-full">
-            <span className="text-sm font-bold text-[#1e3a5f]">${book.price}</span>
-          </div>
-        )}
-      </Link>
-      <div className="p-4">
-        <h3 className="text-gray-900 font-bold mb-1 line-clamp-1 group-hover:text-[#1e3a5f] transition-colors">
-          {book.title}
-        </h3>
-        <p className="text-gray-500 text-sm mb-4 line-clamp-1">{book.author}</p>
-        {isOwner && (
-          <div className="flex gap-2">
-            <Link
-              to={`/edit-book/${book._id}`}
-              className="flex-1 px-4 py-2.5 bg-[#1e3a5f] hover:bg-[#2a4a73] text-white text-sm font-medium rounded-xl transition-colors text-center flex items-center justify-center gap-2"
-            >
-              <Icons.Edit className="w-4 h-4" />
-              Edit
-            </Link>
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-            >
-              {isDeleting ? '...' : 'Delete'}
-            </button>
-          </div>
-        )}
       </div>
+
+      <nav className="p-3">
+        {menuItems.map((item) => (
+          <button
+            key={item.key}
+            onClick={() => onSectionChange(item.key)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors mb-1 ${
+              activeSection === item.key
+                ? 'bg-orange-50 text-orange-600'
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <item.icon className="w-5 h-5" />
+            <span className="text-sm font-medium flex-1 text-left">{item.label}</span>
+            {item.badge && (
+              <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-600 rounded font-medium">
+                {item.badge}
+              </span>
+            )}
+            {item.count !== undefined && (
+              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded font-medium">
+                {item.count}
+              </span>
+            )}
+          </button>
+        ))}
+        
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-red-600 hover:bg-red-50"
+          >
+            <Icons.Logout className="w-5 h-5" />
+            <span className="text-sm font-medium flex-1 text-left">Log Out</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 };
 
-const WishlistCard = ({ book, onRemove }) => {
-  const [isRemoving, setIsRemoving] = useState(false);
+// ============== BOOK CARD ==============
+// Using the BookCard component from components/BookCard.jsx
 
-  const handleRemove = async () => {
-    setIsRemoving(true);
-    try {
-      await wishlistAPI.remove(book._id);
-      onRemove(book._id);
-    } catch {
-      // Silent fail
-    } finally {
-      setIsRemoving(false);
-    }
-  };
+// ============== MY BOOKS SECTION ==============
+const MyBooksSection = ({ books, loading }) => {
+  const [activeTab, setActiveTab] = useState('forSale');
+
+  const tabs = [
+    { key: 'myBooks', label: 'My Books' },
+    { key: 'forSale', label: 'For Sale' },
+    { key: 'forTrade', label: 'For Trade' },
+    { key: 'sold', label: 'Sold' },
+    { key: 'traded', label: 'Traded' },
+  ];
+
+  if (loading) {
+    return (
+      <div className="text-center py-16">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading your books...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300">
-      <Link to={`/book/${book._id}`} className="block aspect-[3/4] relative overflow-hidden">
-        <img
-          src={book.photos?.[0] || DEFAULT_BOOK_COVER}
-          alt={book.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          loading="lazy"
+    <div>
+      <div className="flex items-center gap-4 mb-6 border-b border-gray-200">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-3 text-sm font-medium transition-colors relative ${
+              activeTab === tab.key
+                ? 'text-orange-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {tab.label}
+            {activeTab === tab.key && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {books.length === 0 ? (
+        <div className="text-center py-16">
+          <Icons.Book className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No books yet</h3>
+          <p className="text-gray-600">Start adding books to your collection</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-4 gap-6">
+          {books.map((book) => (
+            <BookCard key={book._id} book={book} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============== EDIT PROFILE SECTION ==============
+const EditProfileSection = () => {
+  const [formData, setFormData] = useState({
+    name: 'test2',
+    email: 'test2@example.com',
+    bio: '',
+    location: '',
+  });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+        <input
+          type="text"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      </Link>
-      <div className="p-4">
-        <h3 className="text-gray-900 font-bold mb-1 line-clamp-1">{book.title}</h3>
-        <p className="text-gray-500 text-sm mb-4 line-clamp-1">{book.author}</p>
-        <button
-          onClick={handleRemove}
-          disabled={isRemoving}
-          className="w-full px-4 py-2.5 bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-        >
-          {isRemoving ? 'Removing...' : 'Remove from Wishlist'}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+        <input
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+        <textarea
+          value={formData.bio}
+          onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+          rows={4}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+          placeholder="Tell us about yourself..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+        <input
+          type="text"
+          value={formData.location}
+          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          placeholder="City, Country"
+        />
+      </div>
+
+      <div className="flex gap-4 pt-4">
+        <button className="px-6 py-2 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 transition-colors">
+          Save Changes
+        </button>
+        <button className="px-6 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors">
+          Cancel
         </button>
       </div>
     </div>
   );
 };
 
-const ReviewCard = ({ review }) => (
-  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-    <div className="flex items-start gap-4">
-      <Link to={`/profile/${review.reviewerId?._id}`} className="shrink-0">
-        <img
-          src={review.reviewerId?.avatarUrl || DEFAULT_AVATAR}
-          alt={review.reviewerId?.name}
-          className="w-12 h-12 rounded-full object-cover ring-2 ring-gray-100 hover:ring-[#f7941d] transition-all"
-        />
-      </Link>
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-3 mb-2">
-          <Link 
-            to={`/profile/${review.reviewerId?._id}`}
-            className="font-semibold text-gray-900 hover:text-[#1e3a5f] transition-colors"
-          >
-            {review.reviewerId?.name || 'Anonymous'}
-          </Link>
-          <div className="flex items-center gap-0.5">
-            {[...Array(5)].map((_, i) => (
-              <Icons.Star
-                key={i}
-                className={`w-4 h-4 ${i < review.rating ? 'text-amber-400' : 'text-gray-200'}`}
-              />
-            ))}
-          </div>
-        </div>
-        <p className="text-gray-600 leading-relaxed">{review.comment}</p>
-        <div className="flex items-center gap-2 mt-3 text-sm text-gray-400">
-          <Icons.Calendar className="w-4 h-4" />
-          {new Date(review.createdAt).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const EmptyState = ({ icon, title, description, action }) => (
-  <div className="text-center py-16">
-    <div className="w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-      {icon}
-    </div>
-    <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-    <p className="text-gray-500 mb-6 max-w-sm mx-auto">{description}</p>
-    {action}
-  </div>
-);
-
 // ============== MAIN COMPONENT ==============
 const ProfilePage = () => {
-  const { userId } = useParams();
+  const [activeSection, setActiveSection] = useState(SECTIONS.MY_BOOKS);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { user: currentUser, isAuthenticated, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState(TABS.LISTINGS);
 
-  const isOwnProfile = !userId || (currentUser && userId === currentUser.id);
-  const targetUserId = userId || currentUser?.id;
+  useEffect(() => {
+    const fetchBooks = async () => {
+      if (user?.id) {
+        console.log('Fetching books for user:', user.id);
+        try {
+          const response = await booksAPI.list({ sellerId: user.id });
+          console.log('Books API response:', response);
+          setBooks(response.data || []);
+          console.log('Books set to:', response.data || []);
+        } catch (error) {
+          console.error('Failed to fetch books:', error);
+          setBooks([]);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        console.log('No user id available');
+        setLoading(false);
+      }
+    };
 
-  const {
-    profile,
-    books,
-    wishlist,
-    reviews,
-    loading,
-    error,
-    removeBook,
-    removeFromWishlist,
-  } = useProfileData(targetUserId, isOwnProfile, isAuthenticated);
+    fetchBooks();
+  }, [user?.id]);
 
-  const stats = useMemo(() => ({
-    booksCount: books.length,
-    tradesCount: books.filter((b) => b.status === 'sold' || b.status === 'exchanged').length,
-    rating: profile?.reputation?.score || 0,
-    reviewsCount: profile?.reputation?.reviewsCount || 0,
-  }), [books, profile]);
+  const username = user?.name || "User";
+  const isVerified = user?.isVerified || false; // Adjust based on your user object
 
-  const displayProfile = profile || currentUser;
-
-  const tabs = useMemo(() => {
-    const baseTabs = [
-      { key: TABS.LISTINGS, label: 'Listings', count: books.length },
-    ];
-    if (isOwnProfile) {
-      baseTabs.push({ key: TABS.WISHLIST, label: 'Wishlist', count: wishlist.length });
-    }
-    baseTabs.push({ key: TABS.REVIEWS, label: 'Reviews', count: reviews.length });
-    return baseTabs;
-  }, [isOwnProfile, books.length, wishlist.length, reviews.length]);
-
-  if (loading) return <ProfileSkeleton />;
-  if (error) return <ErrorState message={error} />;
+  const handleLogoutConfirm = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col">
+    <div className="min-h-screen">
       <NavBar />
       
-      {/* Profile Header */}
-      <header className="pt-24 pb-10 px-4 sm:px-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-            {/* Avatar */}
-            <div className="relative group">
-              <img
-                src={displayProfile?.avatarUrl || DEFAULT_AVATAR}
-                alt={displayProfile?.name}
-                className="w-36 h-36 md:w-44 md:h-44 rounded-3xl object-cover ring-4 ring-[#f7941d] shadow-xl shadow-orange-100"
-              />
-              {isOwnProfile && (
-                <button
-                  onClick={() => navigate('/settings')}
-                  className="absolute -bottom-2 -right-2 p-2.5 bg-white rounded-xl shadow-lg border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-50"
-                  aria-label="Edit profile"
-                >
-                  <Icons.Edit className="w-4 h-4 text-gray-600" />
-                </button>
-              )}
-            </div>
+      <div className="pt-20 px-6 max-w-7xl mx-auto">
+        <div className="mb-6">
+          <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-gray-200">
+            <span className="font-semibold text-gray-900">{username}</span>
+            <Icons.CheckCircle className="w-5 h-5 text-green-500" />
+            <span className="text-sm text-gray-600">Verified</span>
+          </div>
+        </div>
 
-            {/* Profile Info */}
-            <div className="flex-1">
-              <div className="flex flex-col md:flex-row md:items-start gap-4 mb-4">
-                <div className="flex-1">
-                  <h1 className="text-3xl md:text-4xl font-bold text-[#1e3a5f] mb-1" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-                    {displayProfile?.name || 'Anonymous'}
-                  </h1>
-                  <p className="text-gray-500">{displayProfile?.email}</p>
+        <div className="flex gap-6">
+          <Sidebar
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+            wishlistCount={1}
+            username={username}
+            isVerified={isVerified}
+            onLogoutClick={() => setShowLogoutModal(true)}
+          />
+
+          <div className="flex-1">
+            <div className="bg-white rounded-lg border border-gray-200 p-8">
+              {activeSection === SECTIONS.PROFILE && <EditProfileSection />}
+              {activeSection === SECTIONS.MY_BOOKS && <MyBooksSection books={books} loading={loading} />}
+              {activeSection === SECTIONS.WISHLIST && (
+                <div className="text-center py-16">
+                  <Icons.Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Your wishlist</h3>
+                  <p className="text-gray-600">Save books you're interested in</p>
                 </div>
-                
-                {isOwnProfile && (
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => navigate('/add-book')}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#f7941d] hover:bg-[#e8850f] text-white font-semibold rounded-full transition-all shadow-lg shadow-orange-200 hover:shadow-orange-300 hover:scale-105"
-                    >
-                      <Icons.Plus className="w-5 h-5" />
-                      Add Book
-                    </button>
-                    <button
-                      onClick={logout}
-                      className="px-6 py-2.5 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-full transition-colors border border-gray-200 shadow-sm"
-                    >
-                      Logout
+              )}
+              {activeSection === SECTIONS.ORDER_HISTORY && (
+                <div className="text-center py-16">
+                  <Icons.Clock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No orders yet</h3>
+                  <p className="text-gray-600">Your order history will appear here</p>
+                </div>
+              )}
+              {activeSection === SECTIONS.ADDRESSES && (
+                <div className="text-center py-16">
+                  <Icons.MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No addresses saved</h3>
+                  <p className="text-gray-600">Add delivery addresses</p>
+                </div>
+              )}
+              {activeSection === SECTIONS.VERIFICATION && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-3">
+                      <Icons.CheckCircle className="w-6 h-6 text-green-600" />
+                      <div>
+                        <div className="font-semibold text-gray-900">Email Verified</div>
+                        <div className="text-sm text-gray-600">test2@example.com</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <Icons.Shield className="w-6 h-6 text-gray-400" />
+                      <div>
+                        <div className="font-semibold text-gray-900">Phone Verification</div>
+                        <div className="text-sm text-gray-600">Not verified</div>
+                      </div>
+                    </div>
+                    <button className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600">
+                      Verify
                     </button>
                   </div>
-                )}
-              </div>
-
-              <p className="text-gray-600 mb-4 max-w-xl leading-relaxed">
-                {displayProfile?.bio || 'No bio provided yet.'}
-              </p>
-
-              {displayProfile?.city && (
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-gray-100 shadow-sm text-sm text-gray-600">
-                  <Icons.Location className="w-4 h-4 text-[#f7941d]" />
-                  {displayProfile.city}
                 </div>
               )}
             </div>
           </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
-            <StatCard value={stats.booksCount} label="Books Listed" />
-            <StatCard value={stats.tradesCount} label="Successful Trades" />
-            <StatCard
-              value={stats.rating.toFixed(1)}
-              label="Rating"
-              icon={<Icons.Star className="w-6 h-6 text-amber-400" />}
-              highlight
-            />
-            <StatCard value={stats.reviewsCount} label="Reviews" />
-          </div>
         </div>
-      </header>
+      </div>
 
-      {/* Tabs Navigation */}
-      <nav className="border-y border-gray-100 bg-white/80 backdrop-blur-sm sticky top-16 z-40 px-4 sm:px-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex gap-8 overflow-x-auto">
-            {tabs.map((tab) => (
-              <TabButton
-                key={tab.key}
-                active={activeTab === tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                count={tab.count}
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Logout</h3>
+            <p className="text-gray-600 mb-6">Are you sure you want to log out?</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
               >
-                {tab.label}
-              </TabButton>
-            ))}
+                Cancel
+              </button>
+              <button
+                onClick={handleLogoutConfirm}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
-      </nav>
-
-      {/* Tab Content */}
-      <main className="flex-1 px-4 sm:px-8 py-12">
-        <div className="max-w-5xl mx-auto">
-          {/* Listings Tab */}
-          {activeTab === TABS.LISTINGS && (
-            <section>
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {isOwnProfile ? 'My Books' : 'Books'}
-                </h2>
-                {isOwnProfile && books.length > 0 && (
-                  <Link
-                    to="/add-book"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#f7941d] hover:bg-[#e8850f] text-white font-medium rounded-full transition-colors text-sm shadow-lg shadow-orange-200"
-                  >
-                    <Icons.Plus className="w-4 h-4" />
-                    Add Book
-                  </Link>
-                )}
-              </div>
-
-              {books.length === 0 ? (
-                <EmptyState
-                  icon={<svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>}
-                  title="No books listed yet"
-                  description={isOwnProfile ? "Start sharing your books with the community!" : "This user hasn't listed any books yet."}
-                  action={isOwnProfile && (
-                    <Link
-                      to="/add-book"
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#f7941d] hover:bg-[#e8850f] text-white font-medium rounded-full transition-colors"
-                    >
-                      <Icons.Plus className="w-5 h-5" />
-                      Add Your First Book
-                    </Link>
-                  )}
-                />
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {books.map((book) => (
-                    <BookCard
-                      key={book._id}
-                      book={book}
-                      isOwner={isOwnProfile}
-                      onDelete={removeBook}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* Wishlist Tab */}
-          {activeTab === TABS.WISHLIST && isOwnProfile && (
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-8">My Wishlist</h2>
-
-              {wishlist.length === 0 ? (
-                <EmptyState
-                  icon={<svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>}
-                  title="Your wishlist is empty"
-                  description="Save books you're interested in for later!"
-                  action={
-                    <Link
-                      to="/browse"
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#1e3a5f] hover:bg-[#2a4a73] text-white font-medium rounded-full transition-colors"
-                    >
-                      Browse Books
-                    </Link>
-                  }
-                />
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {wishlist.map((book) => (
-                    <WishlistCard
-                      key={book._id}
-                      book={book}
-                      onRemove={removeFromWishlist}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* Reviews Tab */}
-          {activeTab === TABS.REVIEWS && (
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-8">Reviews</h2>
-
-              {reviews.length === 0 ? (
-                <EmptyState
-                  icon={<Icons.Star className="w-10 h-10 text-gray-400" />}
-                  title="No reviews yet"
-                  description={isOwnProfile 
-                    ? "Complete more trades to receive reviews from other users!" 
-                    : "This user hasn't received any reviews yet."}
-                />
-              ) : (
-                <div className="space-y-4">
-                  {reviews.map((review) => (
-                    <ReviewCard key={review._id} review={review} />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-        </div>
-      </main>
-
-      <Footer />
+      )}
     </div>
   );
 };
