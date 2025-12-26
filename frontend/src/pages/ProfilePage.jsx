@@ -94,7 +94,7 @@ const Sidebar = ({ activeSection, onSectionChange, wishlistCount, username, isVe
 
   return (
     <div className="w-64 bg-white rounded-lg border border-gray-200">
-      <div className="p-4 bg-gradient-to-r from-orange-400 to-orange-500 rounded-t-lg">
+      <div className="p-4 bg-[#f7941d] rounded-t-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <Icons.User className="w-5 h-5" />
@@ -119,14 +119,14 @@ const Sidebar = ({ activeSection, onSectionChange, wishlistCount, username, isVe
             onClick={() => onSectionChange(item.key)}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors mb-1 ${
               activeSection === item.key
-                ? 'bg-orange-50 text-orange-600'
+                ? 'bg-[#f7941d]/10 text-[#f7941d]'
                 : 'text-gray-700 hover:bg-gray-50'
             }`}
           >
             <item.icon className="w-5 h-5" />
             <span className="text-sm font-medium flex-1 text-left">{item.label}</span>
             {item.badge && (
-              <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-600 rounded font-medium">
+              <span className="text-xs px-2 py-0.5 bg-[#f7941d]/20 text-[#f7941d] rounded font-medium">
                 {item.badge}
               </span>
             )}
@@ -231,7 +231,7 @@ const MyBooksSection = ({ books, loading, user }) => {
   if (loading) {
     return (
       <div className="text-center py-16">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#f7941d] mx-auto mb-4"></div>
         <p className="text-gray-600">Loading your books...</p>
       </div>
     );
@@ -246,13 +246,13 @@ const MyBooksSection = ({ books, loading, user }) => {
             onClick={() => handleTabClick(tab.key)}
             className={`px-4 py-3 text-sm font-medium transition-colors relative ${
               activeTab === tab.key
-                ? 'text-orange-600'
+                ? 'text-[#f7941d]'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             {tab.label}
             {activeTab === tab.key && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600" />
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#f7941d]" />
             )}
           </button>
         ))}
@@ -279,7 +279,7 @@ const MyBooksSection = ({ books, loading, user }) => {
             <div className="text-center">
               <button
                 onClick={handleViewAll}
-                className="px-6 py-2 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 transition-colors"
+                className="px-6 py-2 bg-[#f7941d] text-white font-medium rounded-lg hover:bg-[#e8850f] transition-colors"
               >
                 View All ({filteredBooks.length})
               </button>
@@ -308,7 +308,7 @@ const EditProfileSection = () => {
           type="text"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d] focus:border-transparent"
         />
       </div>
 
@@ -318,7 +318,7 @@ const EditProfileSection = () => {
           type="email"
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d] focus:border-transparent"
         />
       </div>
 
@@ -328,7 +328,7 @@ const EditProfileSection = () => {
           value={formData.bio}
           onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
           rows={4}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d] focus:border-transparent resize-none"
           placeholder="Tell us about yourself..."
         />
       </div>
@@ -339,13 +339,13 @@ const EditProfileSection = () => {
           type="text"
           value={formData.location}
           onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d] focus:border-transparent"
           placeholder="City, Country"
         />
       </div>
 
       <div className="flex gap-4 pt-4">
-        <button className="px-6 py-2 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 transition-colors">
+        <button className="px-6 py-2 bg-[#f7941d] text-white font-medium rounded-lg hover:bg-[#e8850f] transition-colors">
           Save Changes
         </button>
         <button className="px-6 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors">
@@ -457,7 +457,7 @@ const ProfilePage = () => {
                         <div className="text-sm text-gray-600">Not verified</div>
                       </div>
                     </div>
-                    <button className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600">
+                    <button className="px-4 py-2 bg-[#f7941d] text-white text-sm font-medium rounded-lg hover:bg-[#e8850f]">
                       Verify
                     </button>
                   </div>
