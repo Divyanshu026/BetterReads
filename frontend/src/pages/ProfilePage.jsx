@@ -402,15 +402,8 @@ const ProfilePage = () => {
       <NavBar />
       
       <div className="pt-20 px-6 max-w-7xl mx-auto">
-        <div className="mb-6">
-          <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-gray-200">
-            <span className="font-semibold text-gray-900">{username}</span>
-            <Icons.CheckCircle className="w-5 h-5 text-green-500" />
-            <span className="text-sm text-gray-600">Verified</span>
-          </div>
-        </div>
 
-        <div className="flex gap-6">
+        <div className="flex gap-6 mt-10">
           <Sidebar
             activeSection={activeSection}
             onSectionChange={setActiveSection}
