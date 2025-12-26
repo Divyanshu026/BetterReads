@@ -136,7 +136,7 @@ const ResultsPage = () => {
 
       <div className="pt-20 px-6 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 mt-10">
           <Link
             to="/profile"
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
@@ -145,8 +145,8 @@ const ResultsPage = () => {
             <span>Back to Profile</span>
           </Link>
 
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{title}</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 mt-2 ml-11">{title}</h1>
+          <p className="text-gray-600 ml-11">
             {books.length} book{books.length !== 1 ? 's' : ''} found
           </p>
         </div>
