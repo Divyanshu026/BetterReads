@@ -76,6 +76,7 @@ export const offersAPI = {
 // ============ PAYMENTS ============
 export const paymentsAPI = {
   createCheckout: (offerId) => api.post('/payments/checkout', { offerId }),
+  createCartCheckout: (cartItems) => api.post('/payments/cart-checkout', { cartItems }),
   getStatus: (offerId) => api.get(`/payments/status/${offerId}`),
 };
 

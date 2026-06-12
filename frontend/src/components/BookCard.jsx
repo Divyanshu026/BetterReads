@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 
 const BookCard = ({ book }) => {
+  const [isHovered, setIsHovered] = useState(false)
+  
   const {
     id = book?._id || 1,
     title = "The Great Gatsby",
@@ -21,14 +24,19 @@ const BookCard = ({ book }) => {
   const displayCover = (photos && photos.length > 0 && photos[0]) || cover || noImage;
 
   const conditionColors = {
-    'Like New': 'bg-emerald-500/20 text-emerald-400',
-    'Good': 'bg-blue-500/20 text-blue-400',
-    'Fair': 'bg-amber-500/20 text-amber-400',
-    'Worn': 'bg-stone-500/20 text-stone-400'
+    'Like New': 'bg-emerald-500/90 text-white',
+    'Good': 'bg-blue-500/90 text-white',
+    'Fair': 'bg-amber-500/90 text-white',
+    'Worn': 'bg-stone-500/90 text-white'
   }
 
   return (
-    <Link to={`/book/${id}`} className="group block max-w-[200px] w-full mx-auto">
+    <Link 
+      to={`/book/${id}`} 
+      className="group block max-w-[200px] w-full mx-auto"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div
         className="bg-white overflow-hidden border border-stone-300 shadow-md hover:shadow-amber-500/20 transition-all duration-300 hover:-translate-y-1 relative"
       >
@@ -40,6 +48,20 @@ const BookCard = ({ book }) => {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             style={{ maxHeight: '20rem' }}
           />
+          
+          {/* Condition Badge */}
+          <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-semibold ${conditionColors[condition] || conditionColors['Good']}`}>
+            {condition}
+          </div>
+
+          {/* Hover Overlay */}
+          {isHovered && (
+            <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity duration-300">
+              <span className="bg-white px-5 py-2 rounded-full text-sm font-semibold text-gray-900 shadow-lg">
+                View Details
+              </span>
+            </div>
+          )}
         </div>
       </div>
       {/* Book name and author centered below cover */}

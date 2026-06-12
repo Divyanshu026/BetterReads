@@ -32,8 +32,10 @@ const ChatPage = () => {
       try {
         setLoading(true)
         const response = await chatsAPI.get(chatId)
-        setChat(response.data.chat)
-        setMessages(response.data.chat.messages || [])
+        // Backend returns chat directly, not wrapped in .chat
+        const chatData = response.data.chat || response.data
+        setChat(chatData)
+        setMessages(chatData.messages || [])
 
         // Mark as read
         await chatsAPI.markAsRead(chatId)
@@ -87,29 +89,25 @@ const ChatPage = () => {
     setSending(true)
 
     try {
-      // Optimistically add message
-      const optimisticMessage = {
-        _id: Date.now(),
-        senderId: user?.id,
-        content,
-        createdAt: new Date().toISOString()
-      }
-      setMessages(prev => [...prev, optimisticMessage])
-
-      // Send via API
+      // Send via API first
       const response = await chatsAPI.sendMessage(chatId, content)
       
-      // Send via socket for real-time
-      sendSocketMessage(chatId, content, user?.id)
+      // Optimistically add message
+      const newMsg = response.data.message || {
+        _id: response.data._id || Date.now(),
+        senderId: user?.id,
+        text: content,
+        createdAt: new Date().toISOString()
+      }
+      
+      setMessages(prev => [...prev, newMsg])
 
-      // Replace optimistic message with real one
-      setMessages(prev => 
-        prev.map(m => m._id === optimisticMessage._id ? response.data.message : m)
-      )
+      // Send via socket for real-time to other user
+      sendSocketMessage(chatId, content)
+
     } catch (error) {
       console.error('Send message error:', error)
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(m => m._id !== Date.now()))
+      alert('Failed to send message. Please try again.')
     } finally {
       setSending(false)
     }
@@ -146,7 +144,7 @@ const ChatPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <Header />
+        <NavBar />
         <div className="pt-24 px-8 flex items-center justify-center h-[calc(100vh-96px)]">
           <div className="animate-spin w-8 h-8 border-2 border-[#f7941d] border-t-transparent rounded-full"></div>
         </div>
@@ -162,7 +160,7 @@ const ChatPage = () => {
         <div className="max-w-2xl mx-auto space-y-4">
           {/* Book info banner */}
           {chat?.bookId && (
-            <div className="bg-white rounded-xl p-4 flex items-center gap-4 mb-6">
+            <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-4 mb-6 border border-gray-200">
               <img 
                 src={chat.bookId.photos?.[0] || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=100'} 
                 alt={chat.bookId.title}
@@ -170,7 +168,7 @@ const ChatPage = () => {
               />
               <div className="flex-1 min-w-0">
                 <p className="text-gray-500 text-sm">Conversation about</p>
-                <h3 className="text-white font-medium truncate">{chat.bookId.title}</h3>
+                <h3 className="text-gray-900 font-medium truncate">{chat.bookId.title}</h3>
                 <p className="text-gray-600 text-sm">{chat.bookId.author}</p>
               </div>
             </div>
@@ -192,20 +190,18 @@ const ChatPage = () => {
               <div key={item._id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[70%] ${isOwn ? 'order-2' : 'order-1'}`}>
                   {!isOwn && (
-                    <img 
-                      src={otherUser?.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50'} 
-                      alt=""
-                      className="w-6 h-6 rounded-full object-cover mb-1"
-                    />
+                    <div className="w-6 h-6 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-semibold mb-1">
+                      {otherUser?.name?.[0]?.toUpperCase() || '?'}
+                    </div>
                   )}
                   <div className={`rounded-2xl px-4 py-2 ${
                     isOwn 
                       ? 'bg-[#f7941d] text-white rounded-tr-sm' 
-                      : 'bg-white text-white rounded-tl-sm'
+                      : 'bg-gray-100 text-gray-900 rounded-tl-sm'
                   }`}>
-                    <p className="wrap-break-word">{item.content}</p>
+                    <p className="wrap-break-word">{item.text || item.content}</p>
                   </div>
-                  <p className={`text-stone-600 text-xs mt-1 ${isOwn ? 'text-right' : 'text-left'}`}>
+                  <p className={`text-gray-500 text-xs mt-1 ${isOwn ? 'text-right' : 'text-left'}`}>
                     {formatTime(item.createdAt)}
                   </p>
                 </div>
@@ -224,12 +220,12 @@ const ChatPage = () => {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-full text-white placeholder-gray-400 focus:outline-none focus:border-[#f7941d] transition-colors"
+            className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#f7941d] transition-colors"
           />
           <button
             type="submit"
             disabled={!newMessage.trim() || sending}
-            className="p-3 bg-[#f7941d] hover:bg-[#f7941d] text-white rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-3 bg-[#f7941d] hover:bg-[#e8850f] text-white rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {sending ? (
               <div className="w-5 h-5 border-2 border-stone-900 border-t-transparent rounded-full animate-spin"></div>

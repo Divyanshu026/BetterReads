@@ -23,6 +23,8 @@ const ResultsPage = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [similarBooks, setSimilarBooks] = useState([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
 
   // Get filter parameters from URL
   const category = searchParams.get('category'); // e.g., 'genre', 'status', 'type'
@@ -44,6 +46,10 @@ const ResultsPage = () => {
         switch (category) {
           case 'genre':
             params.genre = value;
+            break;
+          case 'search':
+            // Use text search query
+            params.q = value;
             break;
           case 'status':
             // For status filtering, we might need different handling
@@ -94,6 +100,48 @@ const ResultsPage = () => {
 
     fetchBooks();
   }, [category, value]);
+
+  // Fetch similar/recommended books
+  useEffect(() => {
+    const fetchSimilarBooks = async () => {
+      if (loading) return;
+
+      try {
+        setSimilarLoading(true);
+        let similarParams = { limit: 8 };
+
+        // Try to get books from a different genre or random recommendations
+        // If current search is by genre, get books from other genres
+        if (category === 'genre' && value) {
+          // Fetch all books and filter out the current genre to get "similar" suggestions
+          const response = await booksAPI.list({ limit: 20 });
+          const allBooks = response.data || [];
+          // Filter out books that are already in results and from different genres
+          const bookIds = new Set(books.map(b => b._id));
+          const filtered = allBooks
+            .filter(b => !bookIds.has(b._id))
+            .slice(0, 8);
+          setSimilarBooks(filtered);
+        } else {
+          // For other searches, just get some random recommendations
+          const response = await booksAPI.list(similarParams);
+          const allBooks = response.data || [];
+          const bookIds = new Set(books.map(b => b._id));
+          const filtered = allBooks
+            .filter(b => !bookIds.has(b._id))
+            .slice(0, 8);
+          setSimilarBooks(filtered);
+        }
+      } catch (err) {
+        console.error('Failed to fetch similar books:', err);
+        setSimilarBooks([]);
+      } finally {
+        setSimilarLoading(false);
+      }
+    };
+
+    fetchSimilarBooks();
+  }, [loading, books, category, value]);
 
   if (loading) {
     return (
@@ -182,6 +230,32 @@ const ResultsPage = () => {
             {books.map((book) => (
               <BookCard key={book._id} book={book} />
             ))}
+          </div>
+        )}
+
+        {/* Similar Books Section */}
+        {!loading && similarBooks.length > 0 && (
+          <div className="mt-16 mb-12">
+            <div className="border-t border-gray-200 pt-10">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                You May Also Like
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Discover more books based on your interests
+              </p>
+
+              {similarLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {similarBooks.map((book) => (
+                    <BookCard key={book._id} book={book} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -1,5 +1,5 @@
 // Payments controller - Stripe checkout and webhook handling
-const { createCheckoutSession, stripe } = require('../services/stripe');
+const { createCheckoutSession, createCartCheckoutSession, stripe } = require('../services/stripe');
 const Offer = require('../models/Offer');
 const Book = require('../models/Book');
 const config = require('../config');
@@ -31,7 +31,7 @@ async function createCheckout(req, res) {
 
     // Determine the amount (use offer amount or listing price)
     const amountCents = offer.amountCents || offer.listingId.priceCents;
-    const currency = offer.listingId.currency || 'usd';
+    const currency = 'inr'; // Use INR for Indian Rupees
 
     // Build URLs for redirect
     const baseUrl = config.frontendUrl || 'http://localhost:5173';
@@ -54,6 +54,64 @@ async function createCheckout(req, res) {
     res.json({ url: session.url, sessionId: session.id });
   } catch (err) {
     console.error('Create checkout error:', err);
+    res.status(500).json({ error: { message: err.message } });
+  }
+}
+
+// POST /api/payments/cart-checkout — create a Stripe Checkout session for cart items
+async function createCartCheckout(req, res) {
+  try {
+    const { cartItems } = req.body;
+    const userId = req.user.userId;
+
+    if (!cartItems || cartItems.length === 0) {
+      return res.status(400).json({ error: { message: 'Cart is empty' } });
+    }
+
+    // Validate and process cart items
+    const processedItems = [];
+    const bookIds = [];
+    
+    for (const item of cartItems) {
+      // Verify book exists and is available
+      const book = await Book.findById(item._id);
+      if (!book) {
+        return res.status(404).json({ error: { message: `Book not found: ${item.title}` } });
+      }
+      if (book.status === 'sold') {
+        return res.status(400).json({ error: { message: `Book already sold: ${item.title}` } });
+      }
+      
+      processedItems.push({
+        ...item,
+        priceCents: book.priceCents,
+        title: book.title,
+        author: book.author,
+        photos: book.photos,
+        quantity: 1,
+      });
+      bookIds.push(item._id);
+    }
+
+    // Build URLs for redirect
+    const baseUrl = config.frontendUrl || 'http://localhost:5173';
+    const successUrl = `${baseUrl}/payment/success?type=cart`;
+    const cancelUrl = `${baseUrl}/cart`;
+
+    // Create Stripe Checkout session
+    const session = await createCartCheckoutSession({
+      cartItems: processedItems,
+      successUrl,
+      cancelUrl,
+      metadata: {
+        buyerId: userId,
+        bookIds: JSON.stringify(bookIds),
+      },
+    });
+
+    res.json({ url: session.url, sessionId: session.id });
+  } catch (err) {
+    console.error('Create cart checkout error:', err);
     res.status(500).json({ error: { message: err.message } });
   }
 }
@@ -136,4 +194,4 @@ async function getPaymentStatus(req, res) {
   }
 }
 
-module.exports = { createCheckout, handleWebhook, getPaymentStatus };
+module.exports = { createCheckout, createCartCheckout, handleWebhook, getPaymentStatus };

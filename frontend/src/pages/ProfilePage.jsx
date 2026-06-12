@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import NavBar from '../components/NavBar';
 import BookCard from '../components/BookCard';
 import { useAuth } from '../context/AuthContext';
-import { booksAPI } from '../services/api';
+import { booksAPI, wishlistAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 // ============== CONSTANTS ==============
@@ -293,64 +293,148 @@ const MyBooksSection = ({ books, loading, user }) => {
 
 // ============== EDIT PROFILE SECTION ==============
 const EditProfileSection = () => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
-    name: 'test2',
-    email: 'test2@example.com',
-    bio: '',
-    location: '',
+    name: user?.name || '',
+    email: user?.email || '',
+    bio: user?.bio || '',
+    location: user?.location || '',
+    phone: user?.phone || '',
   });
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState(null);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setSaveMessage(null);
+    try {
+      // await usersAPI.updateProfile(user.id, formData);
+      setSaveMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      setSaveMessage({ type: 'error', text: 'Failed to save profile. Please try again.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-        <input
-          type="text"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d] focus:border-transparent"
-        />
-      </div>
+    <div className="max-w-2xl">
+      <h2 className="text-xl font-semibold text-gray-900 mb-6">Personal Information</h2>
+      
+      {saveMessage && (
+        <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
+          saveMessage.type === 'success' 
+            ? 'bg-green-50 text-green-700 border border-green-200' 
+            : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+          {saveMessage.type === 'success' ? (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+              <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+              <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clipRule="evenodd" />
+            </svg>
+          )}
+          {saveMessage.text}
+        </div>
+      )}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-        <input
-          type="email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d] focus:border-transparent"
-        />
-      </div>
+      <div className="space-y-5">
+        {/* Name Field */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Full Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d]/20 focus:border-[#f7941d] transition-colors"
+            placeholder="Enter your full name"
+          />
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
-        <textarea
-          value={formData.bio}
-          onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-          rows={4}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d] focus:border-transparent resize-none"
-          placeholder="Tell us about yourself..."
-        />
-      </div>
+        {/* Email Field */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Email Address <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d]/20 focus:border-[#f7941d] transition-colors bg-gray-50"
+            placeholder="your.email@example.com"
+            disabled
+          />
+          <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-        <input
-          type="text"
-          value={formData.location}
-          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d] focus:border-transparent"
-          placeholder="City, Country"
-        />
-      </div>
+        {/* Phone and Location in a row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone Number</label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d]/20 focus:border-[#f7941d] transition-colors"
+              placeholder="+91 98765 43210"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
+            <input
+              type="text"
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d]/20 focus:border-[#f7941d] transition-colors"
+              placeholder="City, State"
+            />
+          </div>
+        </div>
 
-      <div className="flex gap-4 pt-4">
-        <button className="px-6 py-2 bg-[#f7941d] text-white font-medium rounded-lg hover:bg-[#e8850f] transition-colors">
-          Save Changes
-        </button>
-        <button className="px-6 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors">
-          Cancel
-        </button>
+        {/* Bio Field */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
+          <textarea
+            value={formData.bio}
+            onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+            rows={3}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f7941d]/20 focus:border-[#f7941d] transition-colors resize-none"
+            placeholder="Tell others about yourself and your book interests..."
+            maxLength={300}
+          />
+          <div className="flex justify-end">
+            <span className="text-xs text-gray-500">{formData.bio.length}/300</span>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-4 border-t border-gray-100">
+          <button 
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-6 py-2.5 bg-[#f7941d] text-white font-medium rounded-lg hover:bg-[#e8850f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isSaving && (
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </button>
+          <button 
+            type="button"
+            className="px-6 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -360,7 +444,9 @@ const EditProfileSection = () => {
 const ProfilePage = () => {
   const [activeSection, setActiveSection] = useState(SECTIONS.MY_BOOKS);
   const [books, setBooks] = useState([]);
+  const [wishlistBooks, setWishlistBooks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -389,8 +475,28 @@ const ProfilePage = () => {
     fetchBooks();
   }, [user?.id]);
 
+  // Fetch wishlist when switching to wishlist tab
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      if (activeSection === SECTIONS.WISHLIST && user?.id) {
+        setWishlistLoading(true);
+        try {
+          const response = await wishlistAPI.get();
+          setWishlistBooks(response.data || []);
+        } catch (error) {
+          console.error('Failed to fetch wishlist:', error);
+          setWishlistBooks([]);
+        } finally {
+          setWishlistLoading(false);
+        }
+      }
+    };
+
+    fetchWishlist();
+  }, [activeSection, user?.id]);
+
   const username = user?.name || "User";
-  const isVerified = user?.isVerified || false; // Adjust based on your user object
+  const isVerified = user?.isVerified || false;
 
   const handleLogoutConfirm = () => {
     logout();
@@ -407,7 +513,7 @@ const ProfilePage = () => {
           <Sidebar
             activeSection={activeSection}
             onSectionChange={setActiveSection}
-            wishlistCount={1}
+            wishlistCount={wishlistBooks.length}
             username={username}
             isVerified={isVerified}
             onLogoutClick={() => setShowLogoutModal(true)}
@@ -418,11 +524,33 @@ const ProfilePage = () => {
               {activeSection === SECTIONS.PROFILE && <EditProfileSection />}
               {activeSection === SECTIONS.MY_BOOKS && <MyBooksSection books={books} loading={loading} user={user} />}
               {activeSection === SECTIONS.WISHLIST && (
-                <div className="text-center py-16">
-                  <Icons.Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Your wishlist</h3>
-                  <p className="text-gray-600">Save books you're interested in</p>
-                </div>
+                wishlistLoading ? (
+                  <div className="text-center py-16">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#f7941d] mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading wishlist...</p>
+                  </div>
+                ) : wishlistBooks.length === 0 ? (
+                  <div className="text-center py-16">
+                    <Icons.Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Your wishlist is empty</h3>
+                    <p className="text-gray-600 mb-6">Save books you're interested in by clicking the heart icon</p>
+                    <button
+                      onClick={() => navigate('/browse')}
+                      className="px-6 py-2 bg-[#f7941d] text-white font-medium rounded-lg hover:bg-[#e8850f] transition-colors"
+                    >
+                      Browse Books
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-6">Your Wishlist ({wishlistBooks.length})</h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {wishlistBooks.map((book) => (
+                        <BookCard key={book._id} book={book} />
+                      ))}
+                    </div>
+                  </div>
+                )
               )}
               {activeSection === SECTIONS.ORDER_HISTORY && (
                 <div className="text-center py-16">

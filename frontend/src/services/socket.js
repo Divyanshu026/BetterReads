@@ -66,6 +66,12 @@ export const onMessage = (callback) => {
   if (socket) {
     socket.on('message', callback);
   }
+  // Return cleanup function
+  return () => {
+    if (socket) {
+      socket.off('message', callback);
+    }
+  };
 };
 
 // Remove message listener
