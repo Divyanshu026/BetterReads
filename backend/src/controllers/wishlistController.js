@@ -39,7 +39,7 @@ async function addToWishlist(req, res) {
     const user = await User.findByIdAndUpdate(
       userId,
       { $addToSet: { wishlist: bookId } },
-      { new: true }
+      { new: true },
     ).populate({
       path: 'wishlist',
       populate: { path: 'ownerId', select: 'name avatarUrl' },
@@ -61,7 +61,7 @@ async function removeFromWishlist(req, res) {
     const user = await User.findByIdAndUpdate(
       userId,
       { $pull: { wishlist: bookId } },
-      { new: true }
+      { new: true },
     ).populate({
       path: 'wishlist',
       populate: { path: 'ownerId', select: 'name avatarUrl' },
@@ -81,7 +81,7 @@ async function checkWishlist(req, res) {
     const { bookId } = req.params;
 
     const user = await User.findById(userId);
-    const inWishlist = user.wishlist && user.wishlist.some(id => String(id) === bookId);
+    const inWishlist = user.wishlist && user.wishlist.some((id) => String(id) === bookId);
 
     res.json({ inWishlist });
   } catch (err) {

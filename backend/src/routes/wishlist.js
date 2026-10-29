@@ -1,7 +1,12 @@
 // Express router for wishlist endpoints
 const express = require('express');
 const router = express.Router();
-const { getWishlist, addToWishlist, removeFromWishlist, checkWishlist } = require('../controllers/wishlistController');
+const {
+  getWishlist,
+  addToWishlist,
+  removeFromWishlist,
+  checkWishlist,
+} = require('../controllers/wishlistController');
 const { requireAuth } = require('../middleware/auth');
 
 // All wishlist routes require authentication

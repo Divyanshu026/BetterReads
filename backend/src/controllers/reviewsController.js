@@ -6,11 +6,16 @@ const Offer = require('../models/Offer');
 // POST /api/reviews — create a new review
 async function createReview(req, res) {
   try {
-    const { revieweeId, offerId, rating, comment, transactionType } = req.body;
+    const { revieweeId, offerId, bookId, rating, comment, transactionType } = req.body;
+    if (bookId) {
+      const book = await require('../models/Book').findById(bookId);
+      if (!book || String(book.ownerId) !== revieweeId)
+        return res.status(400).json({ error: { message: 'Book and seller do not match' } });
+    }
     const reviewerId = req.user.userId;
 
     // Validate rating
-    if (!rating || rating < 1 || rating > 5) {
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
       return res.status(400).json({ error: { message: 'Rating must be between 1 and 5' } });
     }
 
@@ -33,21 +38,32 @@ async function createReview(req, res) {
       }
 
       // Check that the offer is completed (accepted)
-      if (offer.status !== 'accepted') {
-        return res.status(400).json({ error: { message: 'Can only review completed transactions' } });
+      if (offer.status !== 'accepted' || (offer.type === 'purchase' && !offer.paymentCompleted)) {
+        return res
+          .status(400)
+          .json({ error: { message: 'Can only review completed transactions' } });
       }
 
       // Check that the reviewer was part of the transaction
       const isProposer = String(offer.proposerId) === reviewerId;
       const isOwner = String(offer.listingId.ownerId) === reviewerId;
+      const counterpart = isProposer ? String(offer.listingId.ownerId) : String(offer.proposerId);
+      if (revieweeId !== counterpart)
+        return res
+          .status(400)
+          .json({ error: { message: 'Review the other participant in this transaction' } });
       if (!isProposer && !isOwner) {
-        return res.status(403).json({ error: { message: 'You were not part of this transaction' } });
+        return res
+          .status(403)
+          .json({ error: { message: 'You were not part of this transaction' } });
       }
 
       // Check for duplicate review
       const existingReview = await Review.findOne({ reviewerId, offerId });
       if (existingReview) {
-        return res.status(409).json({ error: { message: 'You have already reviewed this transaction' } });
+        return res
+          .status(409)
+          .json({ error: { message: 'You have already reviewed this transaction' } });
       }
     }
 
@@ -55,6 +71,7 @@ async function createReview(req, res) {
     const review = await Review.create({
       revieweeId,
       reviewerId,
+      bookId,
       offerId,
       rating,
       comment,
@@ -95,6 +112,7 @@ async function listReviews(req, res) {
 
     if (revieweeId) filter.revieweeId = revieweeId;
     if (reviewerId) filter.reviewerId = reviewerId;
+    if (req.query.bookId) filter.bookId = req.query.bookId;
 
     const reviews = await Review.find(filter)
       .populate('reviewerId', 'name avatarUrl')
@@ -200,7 +218,7 @@ async function getReviewSummary(req, res) {
 
     const ratingDistribution = {};
     for (let i = 1; i <= 5; i++) {
-      const found = distribution.find(d => d._id === i);
+      const found = distribution.find((d) => d._id === i);
       ratingDistribution[i] = found ? found.count : 0;
     }
 

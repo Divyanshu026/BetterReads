@@ -8,12 +8,13 @@ function requireAuth(req, res, next) {
   // Read the Authorization header
   const auth = req.headers.authorization;
   // Ensure it's present and starts with the Bearer scheme
-  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: { message: 'Unauthorized' } });
+  if (!auth || !auth.startsWith('Bearer '))
+    return res.status(401).json({ error: { message: 'Unauthorized' } });
   // Extract the token string (everything after 'Bearer ')
   const token = auth.split(' ')[1];
   try {
     // Verify signature and expiry; payload typically contains { userId }
-    const payload = jwt.verify(token, config.jwtSecret);
+    const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
     // Attach decoded payload to req.user for downstream handlers
     req.user = payload;
     next();

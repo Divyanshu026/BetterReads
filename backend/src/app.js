@@ -22,7 +22,12 @@ const app = express();
 // Security headers (Helmet): helps protect against common web vulnerabilities
 app.use(helmet());
 // CORS: allow requests from the frontend domain (currently permissive)
-app.use(cors());
+app.use(cors({ origin: require('./config').frontendUrl, exposedHeaders: ['X-Total-Count'] }));
+app.post(
+  '/api/payments/webhook',
+  express.raw({ type: 'application/json' }),
+  require('./lib/http').wrap(require('./controllers/paymentsController').handleWebhook),
+);
 // Parse JSON bodies up to 10mb (for payloads like images encoded as base64)
 app.use(express.json({ limit: '10mb' }));
 // Parse URL-encoded bodies (form submissions)
@@ -42,7 +47,7 @@ app.use(limiter);
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // Mount REST API routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/books', booksRoutes);
 app.use('/api/offers', offersRoutes);
@@ -51,6 +56,17 @@ app.use('/api/chats', chatsRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/reviews', reviewsRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/orders', require('./routes/orders'));
+app.use((req, res) => res.status(404).json({ error: { message: 'Route not found' } }));
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status =
+    err.status ||
+    (err.code === 11000 ? 409 : ['ValidationError', 'CastError'].includes(err.name) ? 400 : 500);
+  res.status(status).json({
+    error: { message: status === 500 ? 'An unexpected server error occurred' : err.message },
+  });
+});
 
 // Export the configured Express app (used by server.js)
 module.exports = app;

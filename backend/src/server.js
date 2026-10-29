@@ -12,13 +12,15 @@ const { initSockets } = require('./sockets');
 // Bootstraps the server: connect DB, create HTTP server, attach sockets, start listening
 async function start() {
   try {
+    if (!config.jwtSecret || config.jwtSecret.length < 32)
+      throw new Error('Set JWT_SECRET to at least 32 characters');
     // Connect to MongoDB before accepting requests
     await db.connect();
     // Create an HTTP server from the Express app
     const server = http.createServer(app);
 
-  // Initialize Socket.io on the HTTP server
-  initSockets(server);
+    // Initialize Socket.io on the HTTP server
+    app.set('io', initSockets(server));
 
     // Start listening on the configured port
     server.listen(config.port, () => {

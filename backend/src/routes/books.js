@@ -2,7 +2,13 @@
 const express = require('express');
 const router = express.Router();
 // Controller actions for CRUD and listing
-const { createBook, listBooks, getBook, updateBook, deleteBook } = require('../controllers/booksController');
+const {
+  createBook,
+  listBooks,
+  getBook,
+  updateBook,
+  deleteBook,
+} = require('../controllers/booksController');
 // Auth middleware to protect write operations
 const { requireAuth } = require('../middleware/auth');
 

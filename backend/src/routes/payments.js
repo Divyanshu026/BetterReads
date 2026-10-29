@@ -1,12 +1,14 @@
 // Express router for payment endpoints (Stripe integration)
 const express = require('express');
 const router = express.Router();
-const { createCheckout, createCartCheckout, handleWebhook, getPaymentStatus } = require('../controllers/paymentsController');
+const {
+  createCheckout,
+  createCartCheckout,
+  getPaymentStatus,
+} = require('../controllers/paymentsController');
 const { requireAuth } = require('../middleware/auth');
 
-// POST /api/payments/webhook — Stripe webhook (no auth, uses signature verification)
-// Note: This needs raw body parsing, handled in app.js
-router.post('/webhook', express.raw({ type: 'application/json' }), handleWebhook);
+// The signature-verified raw webhook is mounted before JSON parsing in app.js.
 
 // POST /api/payments/checkout — create checkout session (authenticated)
 router.post('/checkout', requireAuth, createCheckout);

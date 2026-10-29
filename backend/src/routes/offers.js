@@ -1,7 +1,13 @@
 // Express router for offer (trade/purchase proposal) endpoints
 const express = require('express');
 const router = express.Router();
-const { createOffer, listOffers, getOffer, updateOfferStatus, cancelOffer } = require('../controllers/offersController');
+const {
+  createOffer,
+  listOffers,
+  getOffer,
+  updateOfferStatus,
+  cancelOffer,
+} = require('../controllers/offersController');
 const { requireAuth } = require('../middleware/auth');
 
 // All offer routes require authentication

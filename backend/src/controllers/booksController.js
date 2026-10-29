@@ -1,145 +1,94 @@
-// Book model providing CRUD access to book listings
 const Book = require('../models/Book');
-
-// POST /api/books — create a new listing (authenticated)
-async function createBook(req, res) {
-  try {
-    const data = req.body; // read payload from client
-    // Set the ownerId to the authenticated user
-    data.ownerId = req.user.userId;
-    
-    // Handle city field - move to location.city
-    if (data.city) {
-      data.location = { city: data.city };
-      delete data.city;
+const { wrap, fail, pick } = require('../lib/http');
+const fields = [
+  'title',
+  'author',
+  'isbn',
+  'genre',
+  'condition',
+  'description',
+  'photos',
+  'priceCents',
+  'barterAvailable',
+];
+const data = (body) => ({
+  ...pick(body, fields),
+  ...(body.city !== undefined ? { location: { city: body.city } } : {}),
+});
+const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+exports.createBook = wrap(async (req, res) =>
+  res
+    .status(201)
+    .json(await Book.create({ ...data(req.body), ownerId: req.user.userId, currency: 'INR' })),
+);
+exports.listBooks = wrap(async (req, res) => {
+  const { q, genre, city, sellerId, status, exchange, minPrice, maxPrice, sort } = req.query;
+  const page = Math.max(1, parseInt(req.query.page) || 1),
+    limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+  const filter = {};
+  if (q)
+    filter.$or = ['title', 'author', 'isbn'].map((key) => ({
+      [key]: new RegExp(escape(String(q).slice(0, 150)), 'i'),
+    }));
+  if (genre) filter.genre = String(genre);
+  if (city) filter['location.city'] = String(city);
+  if (sellerId) filter.ownerId = sellerId;
+  if (status) filter.status = String(status);
+  if (exchange === 'true') filter.barterAvailable = true;
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    filter.priceCents = {};
+    if (minPrice !== undefined) {
+      if (!Number.isFinite(Number(minPrice))) fail(400, 'Invalid price');
+      filter.priceCents.$gte = Number(minPrice);
     }
-    
-    const book = await Book.create(data);
-    // Respond with 201 Created and the new listing
-    res.status(201).json(book);
-  } catch (err) {
-    console.error('Create book error:', err);
-    res.status(400).json({ error: { message: err.message } });
+    if (maxPrice !== undefined) {
+      if (!Number.isFinite(Number(maxPrice))) fail(400, 'Invalid price');
+      filter.priceCents.$lte = Number(maxPrice);
+    }
   }
-}
-
-// GET /api/books — list with optional filters and pagination
-async function listBooks(req, res) {
-  try {
-    const { page = 1, limit = 20, q, genre, minPrice, maxPrice, city, sellerId } = req.query;
-    const filter = {};
-    // Full-text search (requires text index on relevant fields)
-    if (q) filter.$text = { $search: q };
-    // Filter by genre
-    if (genre) filter.genre = genre;
-    // Price range filters (in cents)
-    if (minPrice) filter.priceCents = { $gte: Number(minPrice) };
-    if (maxPrice) filter.priceCents = { ...(filter.priceCents || {}), $lte: Number(maxPrice) };
-    // City filter for location-based search
-    if (city) filter['location.city'] = city;
-    // Filter by seller/owner
-    if (sellerId) filter.ownerId = sellerId;
-    
-    const books = await Book.find(filter)
-      .populate('ownerId', 'name email')
+  res.set('X-Total-Count', String(await Book.countDocuments(filter)));
+  res.json(
+    await Book.find(filter)
+      .populate('ownerId', 'name avatarUrl')
+      .sort(
+        sort === 'price-asc'
+          ? { priceCents: 1, _id: 1 }
+          : sort === 'price-desc'
+            ? { priceCents: -1, _id: 1 }
+            : { createdAt: -1, _id: -1 },
+      )
       .skip((page - 1) * limit)
-      .limit(Number(limit));
-    res.json(books);
-  } catch (err) {
-    console.error('List books error:', err);
-    res.status(500).json({ error: { message: err.message } });
-  }
-}
-
-// GET /api/books/:id — fetch a single listing by id
-async function getBook(req, res) {
-  try {
-    const book = await Book.findById(req.params.id).populate('ownerId', 'name email');
-    if (!book) return res.status(404).json({ error: { message: 'Book not found' } });
-    
-    // Transform for frontend compatibility (add sellerId field)
-    const bookObj = book.toObject();
-    bookObj.sellerId = bookObj.ownerId;
-    bookObj.city = bookObj.location?.city;
-    
-    res.json(bookObj);
-  } catch (err) {
-    console.error('Get book error:', err);
-    res.status(500).json({ error: { message: err.message } });
-  }
-}
-
-// PATCH /api/books/:id — update an existing listing (authenticated owner only)
-async function updateBook(req, res) {
-  try {
-    const book = await Book.findById(req.params.id);
-    if (!book) return res.status(404).json({ error: { message: 'Book not found' } });
-    // Ownership check: only the owner may update
-    if (String(book.ownerId) !== req.user.userId) return res.status(403).json({ error: { message: 'Forbidden' } });
-    
-    const data = req.body;
-    // Handle city field
-    if (data.city) {
-      data.location = { city: data.city };
-      delete data.city;
-    }
-    
-    Object.assign(book, data);
-    await book.save();
-    res.json(book);
-  } catch (err) {
-    console.error('Update book error:', err);
-    res.status(400).json({ error: { message: err.message } });
-  }
-}
-
-// DELETE /api/books/:id — remove a listing (authenticated owner only)
-async function deleteBook(req, res) {
-  try {
-    const book = await Book.findById(req.params.id);
-    if (!book) return res.status(404).json({ error: { message: 'Book not found' } });
-    // Ownership check: only the owner may delete
-    if (String(book.ownerId) !== req.user.userId) return res.status(403).json({ error: { message: 'Forbidden' } });
-    await book.deleteOne();
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Delete book error:', err);
-    res.status(500).json({ error: { message: err.message } });
-  }
-}
-
-// Export controller functions
-// GET /api/books/suggest?q=abc — suggest book titles or authors
-async function suggestBooksAuthors(req, res) {
-  try {
-    const { q } = req.query;
-    if (!q || q.length < 1) return res.json([]);
-    // Find books where title or author matches (case-insensitive, partial)
-    const regex = new RegExp(q, 'i');
-    const books = await Book.find({
-      $or: [
-        { title: regex },
-        { author: regex }
-      ]
-    }).limit(10).select('title author');
-    // Return unique suggestions (no duplicates)
-    const suggestions = [];
-    const seen = new Set();
-    books.forEach(b => {
-      if (b.title && !seen.has(b.title)) {
-        suggestions.push({ type: 'title', value: b.title });
-        seen.add(b.title);
-      }
-      if (b.author && !seen.has(b.author)) {
-        suggestions.push({ type: 'author', value: b.author });
-        seen.add(b.author);
-      }
-    });
-    res.json(suggestions);
-  } catch (err) {
-    console.error('Suggest books/authors error:', err);
-    res.status(500).json({ error: { message: err.message } });
-  }
-}
-
-module.exports = { createBook, listBooks, getBook, updateBook, deleteBook, suggestBooksAuthors };
+      .limit(limit),
+  );
+});
+exports.getBook = wrap(async (req, res) => {
+  const book = await Book.findById(req.params.id).populate('ownerId', 'name avatarUrl reputation');
+  if (!book) fail(404, 'Book not found');
+  res.json(book);
+});
+exports.updateBook = wrap(async (req, res) => {
+  const book = await Book.findOneAndUpdate(
+    { _id: req.params.id, ownerId: req.user.userId, status: 'available' },
+    { $set: data(req.body) },
+    { new: true, runValidators: true },
+  );
+  if (!book) fail(409, 'Only your available listings can be edited');
+  res.json(book);
+});
+exports.deleteBook = wrap(async (req, res) => {
+  const book = await Book.findOneAndDelete({
+    _id: req.params.id,
+    ownerId: req.user.userId,
+    status: 'available',
+  });
+  if (!book) fail(409, 'Only your available listings can be deleted');
+  res.json({ success: true });
+});
+exports.suggestBooksAuthors = wrap(async (req, res) => {
+  if (!req.query.q) return res.json([]);
+  const regex = new RegExp(escape(String(req.query.q).slice(0, 150)), 'i');
+  const books = await Book.find({ $or: [{ title: regex }, { author: regex }] })
+    .limit(8)
+    .select('title author');
+  res.json(books.map((book) => ({ type: 'title', value: book.title })));
+});

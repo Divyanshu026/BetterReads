@@ -29,6 +29,10 @@ dist-ssr/
 
 # Coverage
 coverage/
+artifacts/
+playwright-report/
+test-results/
+backend/uploads/
 
 # Ignore local root images
 /*.jpg

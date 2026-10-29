@@ -1,7 +1,13 @@
 // Express router for chat/messaging endpoints
 const express = require('express');
 const router = express.Router();
-const { listChats, createChat, getChat, sendMessage, markAsRead } = require('../controllers/chatsController');
+const {
+  listChats,
+  createChat,
+  getChat,
+  sendMessage,
+  markAsRead,
+} = require('../controllers/chatsController');
 const { requireAuth } = require('../middleware/auth');
 
 // All chat routes require authentication

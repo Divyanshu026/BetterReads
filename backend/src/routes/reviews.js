@@ -1,7 +1,13 @@
 // Express router for review endpoints
 const express = require('express');
 const router = express.Router();
-const { createReview, listReviews, getReview, deleteReview, getReviewSummary } = require('../controllers/reviewsController');
+const {
+  createReview,
+  listReviews,
+  getReview,
+  deleteReview,
+  getReviewSummary,
+} = require('../controllers/reviewsController');
 const { requireAuth } = require('../middleware/auth');
 
 // GET /api/reviews — list reviews (public, with filters)

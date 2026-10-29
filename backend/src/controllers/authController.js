@@ -1,73 +1,42 @@
-// Import bcrypt for hashing passwords securely
 const bcrypt = require('bcryptjs');
-// Import jsonwebtoken to issue and verify JWTs (tokens used for auth)
 const jwt = require('jsonwebtoken');
-// Mongoose model for users (MongoDB collection)
 const User = require('../models/User');
-// Centralized configuration (reads environment variables)
 const config = require('../config');
-
-// Register a new user
-async function register(req, res) {
-  // Read fields sent by the client in the HTTP request body (JSON)
-  // Using object destructuring to pick out only what we need
-  const { email, password, name } = req.body;
-
-  // Basic validation: ensure required fields exist
-  // If either email or password is missing, respond with HTTP 400 (Bad Request)
-  if (!email || !password) return res.status(400).json({ error: { message: 'Email and password required' } });
-
-  // Database lookup: check if a user with the given email already exists
-  const existing = await User.findOne({ email });
-
-  // If a record exists, return HTTP 409 (Conflict) to indicate duplicate email
-  if (existing) return res.status(409).json({ error: { message: 'Email already in use' } });
-
-  // Generate a cryptographic salt for hashing the password
-  // The number (10) is the “cost factor” — higher means more CPU work and better security
-  const salt = await bcrypt.genSalt(10);
-
-  // Hash the plaintext password together with the salt
-  // Result is a secure, salted hash — this is what we store (never store plaintext)
-  const passwordHash = await bcrypt.hash(password, salt);
-
-  // Create a new user document in MongoDB with the hashed password
-  const user = await User.create({ email, passwordHash, name });
-
-  // Create a signed JSON Web Token (JWT) that encodes the user’s ID
-  // The token is signed using a secret and set to expire based on config
-  const token = jwt.sign({ userId: user._id }, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
-
-  // Send a successful JSON response containing:
-  // - token: for authenticating subsequent requests (Authorization: Bearer <token>)
-  // - user: minimal public fields (never send passwordHash)
-  res.json({ token, user: { id: user._id, email: user.email, name: user.name } });
+const { wrap, fail } = require('../lib/http');
+const respond = (res, user) =>
+  res.json({
+    token: jwt.sign({ userId: String(user._id) }, config.jwtSecret, {
+      expiresIn: config.jwtExpiresIn,
+    }),
+    user: { id: user._id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
+  });
+function credentials(body) {
+  if (
+    typeof body.email !== 'string' ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email.trim()) ||
+    typeof body.password !== 'string' ||
+    Buffer.byteLength(body.password) > 72
+  )
+    fail(400, 'Enter a valid email and password (maximum 72 bytes).');
+  return body.email.trim().toLowerCase();
 }
-
-async function login(req, res) {
-  // Read credentials from body
-  const { email, password } = req.body;
-
-  // Require both fields
-  if (!email || !password) return res.status(400).json({ error: { message: 'Email and password required' } });
-
-  // Find the user by email
+exports.register = wrap(async (req, res) => {
+  const email = credentials(req.body);
+  if (req.body.password.length < 8 || typeof req.body.name !== 'string' || !req.body.name.trim())
+    fail(400, 'Name and a password of at least 8 characters are required.');
+  if (await User.exists({ email })) fail(409, 'Email already in use');
+  const user = await User.create({
+    email,
+    name: req.body.name.trim().slice(0, 100),
+    passwordHash: await bcrypt.hash(req.body.password, 12),
+  });
+  res.status(201);
+  respond(res, user);
+});
+exports.login = wrap(async (req, res) => {
+  const email = credentials(req.body);
   const user = await User.findOne({ email });
-
-  // If not found or no hash, reject
-  if (!user || !user.passwordHash) return res.status(401).json({ error: { message: 'Invalid credentials' } });
-
-  // Compare plaintext password with stored hash
-  const match = await bcrypt.compare(password, user.passwordHash);
-
-  // If mismatch, reject
-  if (!match) return res.status(401).json({ error: { message: 'Invalid credentials' } });
-
-  // On success, issue a JWT (same as register)
-  const token = jwt.sign({ userId: user._id }, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
-
-  // Respond with token and user info
-  res.json({ token, user: { id: user._id, email: user.email, name: user.name } });
-}
-
-module.exports = { register, login };
+  if (!user || !(await bcrypt.compare(req.body.password, user.passwordHash)))
+    fail(401, 'Invalid credentials');
+  respond(res, user);
+});

@@ -1,183 +1,134 @@
-// Offers controller - handles purchase and barter proposals
+const mongoose = require('mongoose');
 const Offer = require('../models/Offer');
 const Book = require('../models/Book');
-
-// POST /api/offers — create a new offer on a listing
-async function createOffer(req, res) {
-  try {
-    const { listingId, type, offeredBookIds, amountCents } = req.body;
-    const proposerId = req.user.userId;
-
-    // Validate the listing exists and is available
-    const book = await Book.findById(listingId);
-    if (!book) {
-      return res.status(404).json({ error: { message: 'Listing not found' } });
-    }
-    if (book.status !== 'available') {
-      return res.status(400).json({ error: { message: 'Listing is no longer available' } });
-    }
-    // Prevent self-offers
-    if (String(book.ownerId) === proposerId) {
-      return res.status(400).json({ error: { message: 'Cannot make an offer on your own listing' } });
-    }
-
-    // Create the offer
-    const offer = await Offer.create({
+const { wrap, fail } = require('../lib/http');
+exports.createOffer = wrap(async (req, res) => {
+  const { listingId, type, amountCents, offeredBookIds = [] } = req.body;
+  const book = await Book.findById(listingId);
+  if (!book || book.status !== 'available') fail(409, 'Listing is not available');
+  if (String(book.ownerId) === req.user.userId)
+    fail(400, 'Cannot make an offer on your own listing');
+  if (!['purchase', 'barter'].includes(type)) fail(400, 'Invalid offer type');
+  if (type === 'purchase' && (!Number.isInteger(amountCents) || amountCents < 100))
+    fail(400, 'Offer at least ₹1');
+  if (type === 'barter') {
+    if (
+      !book.barterAvailable ||
+      !Array.isArray(offeredBookIds) ||
+      !offeredBookIds.length ||
+      offeredBookIds.length > 5 ||
+      new Set(offeredBookIds).size !== offeredBookIds.length
+    )
+      fail(400, 'Select 1 to 5 unique books for exchange');
+    if (
+      (await Book.countDocuments({
+        _id: { $in: offeredBookIds },
+        ownerId: req.user.userId,
+        status: 'available',
+      })) !== offeredBookIds.length
+    )
+      fail(400, 'You must own all available offered books');
+  }
+  res.status(201).json(
+    await Offer.create({
       listingId,
-      proposerId,
+      proposerId: req.user.userId,
       type,
-      offeredBookIds: type === 'barter' ? offeredBookIds : [],
       amountCents: type === 'purchase' ? amountCents : undefined,
-    });
-
-    // Populate references for response
-    const populated = await Offer.findById(offer._id)
-      .populate('listingId', 'title photos priceCents')
-      .populate('proposerId', 'name email avatarUrl')
-      .populate('offeredBookIds', 'title photos');
-
-    res.status(201).json(populated);
-  } catch (err) {
-    console.error('Create offer error:', err);
-    res.status(400).json({ error: { message: err.message } });
-  }
-}
-
-// GET /api/offers — list offers (filter by listing owner or proposer)
-async function listOffers(req, res) {
+      offeredBookIds: type === 'barter' ? offeredBookIds : [],
+    }),
+  );
+});
+const populate = (query) =>
+  query
+    .populate('listingId', 'title photos ownerId')
+    .populate('proposerId', 'name avatarUrl')
+    .populate('offeredBookIds', 'title photos');
+exports.listOffers = wrap(async (req, res) => {
+  const mine = await Book.find({ ownerId: req.user.userId }).select('_id');
+  const filter = {
+    $or: [{ proposerId: req.user.userId }, { listingId: { $in: mine.map((b) => b._id) } }],
+  };
+  if (req.query.listingId) filter.listingId = req.query.listingId;
+  res.json(await populate(Offer.find(filter).sort({ createdAt: -1 }).limit(100)));
+});
+exports.getOffer = wrap(async (req, res) => {
+  const offer = await populate(Offer.findById(req.params.id));
+  if (
+    !offer ||
+    (String(offer.proposerId._id) !== req.user.userId &&
+      String(offer.listingId?.ownerId) !== req.user.userId)
+  )
+    fail(404, 'Offer not found');
+  res.json(offer);
+});
+exports.updateOfferStatus = wrap(async (req, res) => {
+  if (!['accepted', 'declined'].includes(req.body.status)) fail(400, 'Invalid status');
+  const session = await mongoose.startSession();
   try {
-    const { listingId, proposerId, receivedByMe } = req.query;
-    const userId = req.user.userId;
-    const filter = {};
-
-    if (listingId) {
-      filter.listingId = listingId;
-    }
-    if (proposerId) {
-      filter.proposerId = proposerId;
-    }
-
-    // Get offers on listings owned by the current user
-    if (receivedByMe === 'true') {
-      const myBooks = await Book.find({ ownerId: userId }).select('_id');
-      const myBookIds = myBooks.map(b => b._id);
-      filter.listingId = { $in: myBookIds };
-    }
-
-    const offers = await Offer.find(filter)
-      .populate('listingId', 'title photos priceCents ownerId')
-      .populate('proposerId', 'name email avatarUrl')
-      .populate('offeredBookIds', 'title photos')
-      .sort({ createdAt: -1 });
-
-    res.json(offers);
-  } catch (err) {
-    console.error('List offers error:', err);
-    res.status(500).json({ error: { message: err.message } });
-  }
-}
-
-// GET /api/offers/:id — get a single offer
-async function getOffer(req, res) {
-  try {
-    const offer = await Offer.findById(req.params.id)
-      .populate('listingId', 'title photos priceCents ownerId')
-      .populate('proposerId', 'name email avatarUrl')
-      .populate('offeredBookIds', 'title photos');
-
-    if (!offer) {
-      return res.status(404).json({ error: { message: 'Offer not found' } });
-    }
-    res.json(offer);
-  } catch (err) {
-    console.error('Get offer error:', err);
-    res.status(500).json({ error: { message: err.message } });
-  }
-}
-
-// PATCH /api/offers/:id — accept or decline an offer (listing owner only)
-async function updateOfferStatus(req, res) {
-  try {
-    const { status } = req.body;
-    const userId = req.user.userId;
-
-    if (!['accepted', 'declined'].includes(status)) {
-      return res.status(400).json({ error: { message: 'Invalid status. Use "accepted" or "declined"' } });
-    }
-
-    const offer = await Offer.findById(req.params.id).populate('listingId');
-    if (!offer) {
-      return res.status(404).json({ error: { message: 'Offer not found' } });
-    }
-
-    // Only the listing owner can accept/decline
-    if (String(offer.listingId.ownerId) !== userId) {
-      return res.status(403).json({ error: { message: 'Forbidden: only listing owner can update offer status' } });
-    }
-
-    // Can only update pending offers
-    if (offer.status !== 'pending') {
-      return res.status(400).json({ error: { message: 'Offer has already been processed' } });
-    }
-
-    offer.status = status;
-    await offer.save();
-
-    // If accepted, update the book status
-    if (status === 'accepted') {
-      const book = await Book.findById(offer.listingId._id);
-      if (book) {
-        book.status = offer.type === 'purchase' ? 'reserved' : 'exchanged';
-        await book.save();
+    await session.withTransaction(async () => {
+      const offer = await Offer.findById(req.params.id).session(session);
+      if (!offer || offer.status !== 'pending') fail(409, 'Offer already processed or missing');
+      const book = await Book.findById(offer.listingId).session(session);
+      if (!book || String(book.ownerId) !== req.user.userId)
+        fail(403, 'Only the listing owner can respond');
+      if (req.body.status === 'accepted') {
+        if (book.status !== 'available') fail(409, 'Book no longer available');
+        if (offer.type === 'barter') {
+          const result = await Book.updateMany(
+            { _id: { $in: offer.offeredBookIds }, ownerId: offer.proposerId, status: 'available' },
+            { status: 'exchanged' },
+            { session },
+          );
+          if (result.modifiedCount !== offer.offeredBookIds.length)
+            fail(409, 'Offered books are no longer available');
+        }
+        book.status = offer.type === 'barter' ? 'exchanged' : 'reserved';
+        book.reservationId = String(offer._id);
+        await book.save({ session });
+        await Offer.updateMany(
+          {
+            listingId: { $in: [book._id, ...offer.offeredBookIds] },
+            _id: { $ne: offer._id },
+            status: 'pending',
+          },
+          { status: 'declined' },
+          { session },
+        );
       }
-
-      // Decline all other pending offers on this listing
-      await Offer.updateMany(
-        { listingId: offer.listingId._id, _id: { $ne: offer._id }, status: 'pending' },
-        { status: 'declined' }
-      );
-    }
-
-    const populated = await Offer.findById(offer._id)
-      .populate('listingId', 'title photos priceCents')
-      .populate('proposerId', 'name email avatarUrl')
-      .populate('offeredBookIds', 'title photos');
-
-    res.json(populated);
-  } catch (err) {
-    console.error('Update offer status error:', err);
-    res.status(400).json({ error: { message: err.message } });
+      offer.status = req.body.status;
+      await offer.save({ session });
+    });
+  } finally {
+    await session.endSession();
   }
-}
-
-// DELETE /api/offers/:id — cancel an offer (proposer only)
-async function cancelOffer(req, res) {
+  res.json(await populate(Offer.findById(req.params.id)));
+});
+exports.cancelOffer = wrap(async (req, res) => {
+  const session = await mongoose.startSession();
   try {
-    const userId = req.user.userId;
-    const offer = await Offer.findById(req.params.id);
-
-    if (!offer) {
-      return res.status(404).json({ error: { message: 'Offer not found' } });
-    }
-
-    // Only the proposer can cancel
-    if (String(offer.proposerId) !== userId) {
-      return res.status(403).json({ error: { message: 'Forbidden: only proposer can cancel offer' } });
-    }
-
-    // Can only cancel pending offers
-    if (offer.status !== 'pending') {
-      return res.status(400).json({ error: { message: 'Cannot cancel processed offer' } });
-    }
-
-    offer.status = 'cancelled';
-    await offer.save();
-
-    res.json({ success: true, message: 'Offer cancelled' });
-  } catch (err) {
-    console.error('Cancel offer error:', err);
-    res.status(500).json({ error: { message: err.message } });
+    await session.withTransaction(async () => {
+      const offer = await Offer.findOne({
+        _id: req.params.id,
+        proposerId: req.user.userId,
+      }).session(session);
+      if (!offer || !['pending', 'accepted'].includes(offer.status) || offer.paymentCompleted)
+        fail(409, 'This offer cannot be cancelled');
+      if (offer.status === 'accepted') {
+        if (offer.type !== 'purchase') fail(409, 'Completed exchanges cannot be cancelled');
+        const result = await Book.updateOne(
+          { _id: offer.listingId, status: 'reserved', reservationId: String(offer._id) },
+          { $set: { status: 'available' }, $unset: { reservationId: 1 } },
+          { session },
+        );
+        if (!result.modifiedCount)
+          fail(409, 'Checkout is in progress. Wait for it to expire before cancelling.');
+      }
+      offer.status = 'cancelled';
+      await offer.save({ session });
+    });
+  } finally {
+    await session.endSession();
   }
-}
-
-module.exports = { createOffer, listOffers, getOffer, updateOfferStatus, cancelOffer };
+  res.json({ success: true });
+});

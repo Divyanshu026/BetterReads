@@ -1,168 +1,69 @@
-// Upload controller - Cloudinary image uploads with local fallback
 const cloudinary = require('../services/cloudinary');
 const config = require('../config');
-const fs = require('fs');
+const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
-
-// Check if Cloudinary is configured
-const isCloudinaryConfigured = () => {
-  return config.cloudinary.cloud_name && 
-         config.cloudinary.api_key && 
-         config.cloudinary.api_secret;
-};
-
-// Save base64 image locally (fallback when Cloudinary not configured)
-const saveImageLocally = async (base64Data, folder) => {
-  // Create uploads directory if it doesn't exist
-  const uploadsDir = path.join(__dirname, '../../uploads', folder);
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-
-  // Extract base64 data and mime type
-  const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
-  if (!matches) {
-    throw new Error('Invalid image data format');
-  }
-
-  const ext = matches[1];
-  const data = matches[2];
-  const buffer = Buffer.from(data, 'base64');
-
-  // Generate unique filename
-  const filename = `${crypto.randomBytes(16).toString('hex')}.${ext}`;
-  const filepath = path.join(uploadsDir, filename);
-
-  // Save file
-  fs.writeFileSync(filepath, buffer);
-
-  // Return URL that will be served by Express static middleware
-  return {
-    url: `/uploads/${folder}/${filename}`,
-    publicId: `${folder}/${filename}`,
-    width: 0,
-    height: 0
-  };
-};
-
-// POST /api/upload — upload an image to Cloudinary
-async function uploadImage(req, res) {
-  try {
-    const { image, folder = 'betterreads' } = req.body;
-
-    if (!image) {
-      return res.status(400).json({ error: { message: 'Image data is required' } });
-    }
-
-    let result;
-
-    if (isCloudinaryConfigured()) {
-      // Upload to Cloudinary
-      const cloudResult = await cloudinary.uploader.upload(image, {
-        folder,
-        resource_type: 'image',
-        transformation: [
-          { width: 1200, height: 1200, crop: 'limit' },
-          { quality: 'auto:good' },
-          { fetch_format: 'auto' },
-        ],
-      });
-
-      result = {
-        url: cloudResult.secure_url,
-        publicId: cloudResult.public_id,
-        width: cloudResult.width,
-        height: cloudResult.height,
-      };
-    } else {
-      // Fallback to local storage
-      console.log('Cloudinary not configured, saving locally...');
-      result = await saveImageLocally(image, folder);
-    }
-
-    res.json(result);
-  } catch (err) {
-    console.error('Upload image error:', err);
-    res.status(500).json({ error: { message: err.message } });
-  }
+const { wrap, fail } = require('../lib/http');
+const configured = () =>
+  config.cloudinary.cloud_name && config.cloudinary.api_key && config.cloudinary.api_secret;
+function decode(image) {
+  const match =
+    typeof image === 'string' &&
+    image.match(/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) fail(400, 'Upload a PNG, JPEG or WebP image');
+  const buffer = Buffer.from(match[2], 'base64');
+  if (!buffer.length || buffer.length > 5 * 1024 * 1024)
+    fail(400, 'Images must be smaller than 5 MB');
+  const valid =
+    match[1] === 'png'
+      ? buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+      : match[1] === 'jpeg'
+        ? buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255
+        : buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
+  if (!valid) fail(400, 'Image content does not match its format');
+  return { buffer, extension: match[1] };
 }
-
-// POST /api/upload/multiple — upload multiple images
-async function uploadMultipleImages(req, res) {
-  try {
-    const { images, folder = 'betterreads' } = req.body;
-
-    if (!images || !Array.isArray(images) || images.length === 0) {
-      return res.status(400).json({ error: { message: 'Images array is required' } });
-    }
-
-    if (images.length > 5) {
-      return res.status(400).json({ error: { message: 'Maximum 5 images allowed per upload' } });
-    }
-
-    let uploaded;
-
-    if (isCloudinaryConfigured()) {
-      // Upload all images to Cloudinary in parallel
-      const uploadPromises = images.map(image =>
-        cloudinary.uploader.upload(image, {
-          folder,
-          resource_type: 'image',
-          transformation: [
-            { width: 1200, height: 1200, crop: 'limit' },
-            { quality: 'auto:good' },
-            { fetch_format: 'auto' },
-          ],
-        })
-      );
-
-      const results = await Promise.all(uploadPromises);
-
-      uploaded = results.map(result => ({
-        url: result.secure_url,
-        publicId: result.public_id,
-        width: result.width,
-        height: result.height,
-      }));
-    } else {
-      // Fallback to local storage
-      console.log('Cloudinary not configured, saving locally...');
-      uploaded = await Promise.all(
-        images.map(image => saveImageLocally(image, folder))
-      );
-    }
-
-    res.json({ images: uploaded });
-  } catch (err) {
-    console.error('Upload multiple images error:', err);
-    res.status(500).json({ error: { message: err.message } });
+async function save(image, userId) {
+  const { buffer, extension } = decode(image);
+  const folder = 'betterreads/' + userId;
+  if (configured()) {
+    const result = await cloudinary.uploader.upload(image, {
+      folder,
+      resource_type: 'image',
+      transformation: [{ width: 1200, height: 1200, crop: 'limit' }],
+    });
+    return { url: result.secure_url, publicId: result.public_id };
   }
+  const directory = path.join(__dirname, '../../uploads', folder);
+  await fs.mkdir(directory, { recursive: true });
+  const filename = crypto.randomUUID() + '.' + extension;
+  await fs.writeFile(path.join(directory, filename), buffer);
+  return { url: '/uploads/' + folder + '/' + filename, publicId: folder + '/' + filename };
 }
-
-// DELETE /api/upload/:publicId — delete an image from Cloudinary
-async function deleteImage(req, res) {
-  try {
-    const { publicId } = req.params;
-
-    if (!publicId) {
-      return res.status(400).json({ error: { message: 'Public ID is required' } });
-    }
-
-    // Decode the public ID (it may contain slashes, which are URL-encoded)
-    const decodedPublicId = decodeURIComponent(publicId);
-
-    const result = await cloudinary.uploader.destroy(decodedPublicId);
-
-    if (result.result === 'ok') {
-      res.json({ success: true, message: 'Image deleted' });
-    } else {
-      res.status(404).json({ error: { message: 'Image not found or already deleted' } });
-    }
-  } catch (err) {
-    console.error('Delete image error:', err);
-    res.status(500).json({ error: { message: err.message } });
-  }
-}
-
-module.exports = { uploadImage, uploadMultipleImages, deleteImage };
+exports.uploadImage = wrap(async (req, res) =>
+  res.json(await save(req.body.image, req.user.userId)),
+);
+exports.uploadMultipleImages = wrap(async (req, res) => {
+  if (!Array.isArray(req.body.images) || !req.body.images.length || req.body.images.length > 5)
+    fail(400, 'Upload 1 to 5 images');
+  req.body.images.forEach(decode);
+  res.json({
+    images: await Promise.all(req.body.images.map((image) => save(image, req.user.userId))),
+  });
+});
+exports.deleteImage = wrap(async (req, res) => {
+  const id = req.params.publicId;
+  const prefix = 'betterreads/' + req.user.userId + '/';
+  if (
+    !id.startsWith(prefix) ||
+    !/^[a-zA-Z0-9._-]+$/.test(id.slice(prefix.length)) ||
+    id.includes('..')
+  )
+    fail(403, 'You can only delete your own images');
+  if (configured()) await cloudinary.uploader.destroy(id);
+  else
+    await fs.unlink(path.join(__dirname, '../../uploads', id)).catch((error) => {
+      if (error.code !== 'ENOENT') throw error;
+    });
+  res.json({ success: true });
+});

@@ -13,8 +13,8 @@ async function listChats(req, res) {
       .sort({ updatedAt: -1 });
 
     // Transform to include other participant info
-    const transformed = chats.map(chat => {
-      const otherParticipant = chat.participants.find(p => String(p._id) !== userId);
+    const transformed = chats.map((chat) => {
+      const otherParticipant = chat.participants.find((p) => String(p._id) !== userId);
       return {
         _id: chat._id,
         participant: otherParticipant,
@@ -65,8 +65,10 @@ async function createChat(req, res) {
       messages: [],
     });
 
-    const populated = await Chat.findById(chat._id)
-      .populate('participants', 'name email avatarUrl');
+    const populated = await Chat.findById(chat._id).populate(
+      'participants',
+      'name email avatarUrl',
+    );
 
     res.status(201).json(populated);
   } catch (err) {
@@ -90,7 +92,7 @@ async function getChat(req, res) {
     }
 
     // Ensure the user is a participant
-    const isParticipant = chat.participants.some(p => String(p._id) === userId);
+    const isParticipant = chat.participants.some((p) => String(p._id) === userId);
     if (!isParticipant) {
       return res.status(403).json({ error: { message: 'Forbidden: not a participant' } });
     }
@@ -109,7 +111,12 @@ async function sendMessage(req, res) {
     const chatId = req.params.id;
     const { text, attachments } = req.body;
 
-    if (!text && (!attachments || attachments.length === 0)) {
+    if (
+      typeof text !== 'string' ||
+      !text.trim() ||
+      text.length > 4000 ||
+      (attachments && attachments.length)
+    ) {
       return res.status(400).json({ error: { message: 'Message text or attachments required' } });
     }
 
@@ -119,7 +126,7 @@ async function sendMessage(req, res) {
     }
 
     // Ensure the user is a participant
-    const isParticipant = chat.participants.some(p => String(p) === userId);
+    const isParticipant = chat.participants.some((p) => String(p) === userId);
     if (!isParticipant) {
       return res.status(403).json({ error: { message: 'Forbidden: not a participant' } });
     }
@@ -137,6 +144,7 @@ async function sendMessage(req, res) {
 
     // Return the newly added message
     const newMessage = chat.messages[chat.messages.length - 1];
+    req.app.get('io')?.to(chatId).emit('message', { chatId, message: newMessage });
     res.status(201).json(newMessage);
   } catch (err) {
     console.error('Send message error:', err);
@@ -155,9 +163,11 @@ async function markAsRead(req, res) {
       return res.status(404).json({ error: { message: 'Chat not found' } });
     }
 
+    if (!chat.participants.some((p) => String(p) === userId))
+      return res.status(403).json({ error: { message: 'Not a participant' } });
     // Mark all messages from other participants as seen
     let updated = false;
-    chat.messages.forEach(msg => {
+    chat.messages.forEach((msg) => {
       if (String(msg.senderId) !== userId && !msg.seen) {
         msg.seen = true;
         updated = true;

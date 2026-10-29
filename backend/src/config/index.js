@@ -6,7 +6,7 @@ const dotenv = require('dotenv');
 
 // Load variables from the .env file located at the project root (current working directory)
 // This makes values like process.env.MONGO_URI available in code
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // Export a single configuration object so the rest of the app can import settings
 module.exports = {
