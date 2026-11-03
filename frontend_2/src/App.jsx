@@ -14,7 +14,6 @@ import {
   Menu,
   Plus,
   Search,
-  ShoppingBag,
   UserRound,
   X,
 } from 'lucide-react';
@@ -38,12 +37,12 @@ const mapListing = (book) => ({
 });
 const questions = [
   [
-    'Can I buy a book from this page?',
-    'You can add books to your bag while you browse. Checkout and delivery are not available yet.',
+    'How do I request a book?',
+    'Open a reader listing and select Request exchange to message its owner.',
   ],
   [
     'Can I propose a book exchange?',
-    'Exchange proposals are not available yet.',
+    'Open a reader listing and send an exchange request to start a conversation.',
   ],
   [
     'Can I list one of my books?',
@@ -54,8 +53,8 @@ const questions = [
     'Listings marked as examples use illustrative details. Reader listings are provided by their owners.',
   ],
   [
-    'Are the saved books and bag kept?',
-    'Your bag and saved books stay in this browser tab for the duration of the session.',
+    'Are saved books kept?',
+    'Your saved books stay in this browser tab for the duration of the session.',
   ],
 ];
 
@@ -77,7 +76,6 @@ export default function App() {
   const [liveBooks, setLiveBooks] = useState([]);
   const [listingError, setListingError] = useState('');
   const [showAll, setShowAll] = useState(false);
-  const [bag, setBag] = useState(() => readSessionList('betterreads.bag'));
   const [saved, setSaved] = useState(() => readSessionList('betterreads.saved'));
   const [faq, setFaq] = useState(0);
   const [panel, setPanel] = useState('');
@@ -86,7 +84,6 @@ export default function App() {
   const heroVideoRef = useRef(null);
   const [carousel, setCarousel] = useState({ previous: false, next: false });
 
-  useEffect(() => { sessionStorage.setItem('betterreads.bag', JSON.stringify(bag)); }, [bag]);
   useEffect(() => { sessionStorage.setItem('betterreads.saved', JSON.stringify(saved)); }, [saved]);
 
   useEffect(() => {
@@ -254,14 +251,6 @@ export default function App() {
         </form>
         <div className="header-actions">
           <button
-            className="bag-link"
-            onClick={() => setPanel('bag')}
-            aria-label={`Open book bag, ${bag.length} books`}
-          >
-            <ShoppingBag size={19} aria-hidden="true" />
-            <span>{bag.length}</span>
-          </button>
-          <button
             className="header-icon-button wishlist-link"
             onClick={() => setPanel('saved')}
             aria-label={`Open wishlist, ${saved.length} saved books`}
@@ -354,18 +343,16 @@ export default function App() {
             </button>
             <span className="eyebrow">YOUR BROWSER SESSION</span>
             <h2 id="panel-title">
-              {panel === 'bag' ? 'Your book bag' : panel === 'profile' ? 'Reader profile' : panel === 'community' ? 'The BetterReads community' : 'Wishlist'}
+              {panel === 'profile' ? 'Reader profile' : panel === 'community' ? 'The BetterReads community' : 'Wishlist'}
             </h2>
             {panel !== 'profile' && <p>
-              {panel === 'bag'
-                ? 'Books you have added to your bag during this visit.'
-                : panel === 'community'
+              {panel === 'community'
                     ? 'Community profiles, messages, meetups, and event signups are not available yet.'
                     : 'Books you saved in this browser session.'}
             </p>}
             {panel !== 'profile' && panel !== 'community' && <div className="panel-books">
-              {(panel === 'bag' ? bag : saved).length ? (
-                (panel === 'bag' ? bag : saved).map((title, index) => {
+              {saved.length ? (
+                saved.map((title, index) => {
                   const book = books.find((item) => bookKey(item) === title);
                   if (!book) return null;
                   return (
@@ -376,11 +363,7 @@ export default function App() {
                         <span>{book.price}</span>
                       </div>
                       <button
-                        onClick={() =>
-                          panel === 'bag'
-                            ? setBag((items) => items.filter((_, itemIndex) => itemIndex !== index))
-                            : setSaved((items) => items.filter((item) => item !== title))
-                        }
+                        onClick={() => setSaved((items) => items.filter((item) => item !== title))}
                         aria-label={`Remove ${book.title}`}
                       >
                         <X size={17} />
@@ -390,17 +373,12 @@ export default function App() {
                 })
               ) : (
                 <p className="panel-empty">
-                  {panel === 'bag'
-                    ? 'Your bag is empty. Browse the books to add one.'
-                    : 'No saved books yet. Tap a heart to keep a book here.'}
+                  No saved books yet. Save a book from its details page to keep it here.
                 </p>
               )}
             </div>}
             {panel === 'profile' && (
               <AccountPanel />
-            )}
-            {panel === 'bag' && (
-              <p className="panel-note">Checkout and delivery are not available yet.</p>
             )}
             {panel !== 'profile' && <button
               className="button button-red menu-cta"
@@ -442,8 +420,8 @@ export default function App() {
                 <em>NEW BEGINNINGS.</em>
               </h1>
               <p>
-                Find a story that stays with you. Save a favourite or add a book to your
-                bag. Every book deserves another chapter.
+                Find a story that stays with you. Save a favourite or request an exchange with its
+                reader. Every book deserves another chapter.
               </p>
               <div className="hero-buttons">
                 <button className="button button-wheat" onClick={browseAll}>
@@ -531,8 +509,8 @@ export default function App() {
           </div>
           {listingError && <p className="listing-load-error" role="status">{listingError}</p>}
           <div className="shelf-foot">
-            <span>SHELF MAY INCLUDE EXAMPLE BOOKS · CHECKOUT UNAVAILABLE</span>
-            <span>Bag and saved books last for this browser session.</span>
+            <span>SHELF MAY INCLUDE EXAMPLE BOOKS</span>
+            <span>Saved books last for this browser session.</span>
           </div>
         </section>
 
@@ -598,7 +576,6 @@ export default function App() {
           <div className="footer-links">
             <span className="eyebrow pale">YOUR READING LIST</span>
             <button onClick={() => setPanel('saved')}>Saved books ({saved.length})</button>
-            <button onClick={() => setPanel('bag')}>Book bag ({bag.length})</button>
             <a href="#top">
               Back to the top <ArrowUpRight size={14} />
             </a>
@@ -616,6 +593,8 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
 

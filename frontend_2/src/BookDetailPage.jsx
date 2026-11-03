@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Heart, MessageCircle, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle } from 'lucide-react';
 import AccountPanel from './components/AccountPanel.jsx';
 import { exampleBooks } from './exampleBooks.js';
 
@@ -25,7 +25,6 @@ export default function BookDetailPage({ id, exampleTitle }) {
   const [authVersion, setAuthVersion] = useState(0);
   const [showAccount, setShowAccount] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
-  const [bag, setBag] = useState(() => readList('betterreads.bag'));
   const [saved, setSaved] = useState(() => readList('betterreads.saved'));
   const [showChat, setShowChat] = useState(false);
   const [chatId, setChatId] = useState(null);
@@ -33,6 +32,7 @@ export default function BookDetailPage({ id, exampleTitle }) {
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState('');
   const [chatNotice, setChatNotice] = useState('');
+  const [requestSent, setRequestSent] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -61,7 +61,6 @@ export default function BookDetailPage({ id, exampleTitle }) {
     return () => { active = false; };
   }, [authVersion]);
 
-  useEffect(() => { sessionStorage.setItem('betterreads.bag', JSON.stringify(bag)); }, [bag]);
   useEffect(() => { sessionStorage.setItem('betterreads.saved', JSON.stringify(saved)); }, [saved]);
 
   async function openChat() {
@@ -82,6 +81,31 @@ export default function BookDetailPage({ id, exampleTitle }) {
     finally { setChatBusy(false); }
   }
 
+  async function requestExchange() {
+    if (!user) { setShowAccount(true); return; }
+    if (!book?.ownerId?._id || chatBusy || requestSent || String(user.id) === String(book.ownerId._id)) return;
+    setShowChat(true);
+    setChatBusy(true);
+    setChatError('');
+    setChatNotice('');
+    try {
+      const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` };
+      let current = chatId;
+      let previous = messages;
+      if (!current) {
+        const chat = await request('/api/chats', { method: 'POST', headers, body: JSON.stringify({ participantId: book.ownerId._id }) });
+        current = chat._id;
+        previous = chat.messages || [];
+        setChatId(current);
+      }
+      const text = `Hi! I’m interested in exchanging books for “${book.title}”. Would you be interested? ${window.location.origin}/books/${encodeURIComponent(book._id)}`;
+      const message = await request(`/api/chats/${encodeURIComponent(current)}/messages`, { method: 'POST', headers, body: JSON.stringify({ text }) });
+      setMessages([...previous, message]);
+      setRequestSent(true);
+      setChatNotice('Exchange request sent. You can discuss the details below.');
+    } catch (err) { setChatError(err.message); }
+    finally { setChatBusy(false); }
+  }
   async function sendMessage(event) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -109,7 +133,6 @@ export default function BookDetailPage({ id, exampleTitle }) {
   const key = book?.example ? book.title : book?._id;
   const images = book ? (book.photos?.length ? book.photos.map(photoUrl) : ['/covers/placeholder.svg']) : [];
   const isSaved = saved.includes(key);
-  const isInBag = bag.includes(key);
   const ownerId = book?.ownerId?._id;
   const isOwner = user && ownerId && String(user.id) === String(ownerId);
 
@@ -141,12 +164,12 @@ export default function BookDetailPage({ id, exampleTitle }) {
               {book.example && <p className="detail-note">This is an example book and is not available for purchase or chat.</p>}
               {!book.example && book.status !== 'available' && <p className="detail-note">This book is currently {book.status}.</p>}
               <div className="detail-actions">
-                <button className="button button-red" type="button" disabled={book.example || book.status !== 'available' || isInBag} onClick={() => setBag((items) => [...items, key])}><ShoppingBag size={17} />{isInBag ? 'Added to bag' : 'Add to bag'}</button>
+                <button className="button button-red" type="button" disabled={book.example || book.status !== 'available' || !ownerId || isOwner || chatBusy || requestSent} onClick={requestExchange}><MessageCircle size={17} />{isOwner ? 'Your listing' : requestSent ? 'Request sent' : chatBusy ? 'Please wait…' : 'Request exchange'}</button>
                 <button className="detail-secondary" type="button" aria-pressed={isSaved} onClick={() => setSaved((items) => isSaved ? items.filter((item) => item !== key) : [...items, key])}><Heart size={18} fill={isSaved ? 'currentColor' : 'none'} />{isSaved ? 'Saved' : 'Save to wishlist'}</button>
                 {!book.example && <button className="detail-secondary" type="button" disabled={!ownerId || isOwner} onClick={openChat}><MessageCircle size={18} />{isOwner ? 'Your listing' : 'Message reader'}</button>}
               </div>
-              <p className="detail-note">The bag and wishlist last for this browser session. Checkout is not available yet.</p>
-              {showAccount && <section className="detail-account" aria-label="Log in or sign up"><h2>Log in to message</h2><AccountPanel onAuthenticated={() => { setShowAccount(false); setAuthVersion((n) => n + 1); }} /><button type="button" className="listing-return" onClick={() => setShowAccount(false)}>Close</button></section>}
+              <p className="detail-note">Your wishlist lasts for this browser session. Exchange requests are sent as messages.</p>
+              {showAccount && <section className="detail-account" aria-label="Log in or sign up"><h2>Log in to message</h2><p>After signing in, select Request exchange to send your request.</p><AccountPanel onAuthenticated={() => { setShowAccount(false); setAuthVersion((n) => n + 1); }} /><button type="button" className="listing-return" onClick={() => setShowAccount(false)}>Close</button></section>}
               {showChat && <section className="detail-chat" aria-labelledby="detail-chat-title"><h2 id="detail-chat-title">Message {book.ownerId?.name || 'the reader'}</h2><p>Ask about this book or arrange an exchange.</p>{messages.length > 0 && <div className="detail-messages">{messages.map((message) => <p key={message._id}><strong>{String(message.senderId?._id || message.senderId) === String(user?.id) ? 'You' : book.ownerId?.name || 'Reader'}</strong> {message.text}</p>)}</div>}<form onSubmit={sendMessage}><label htmlFor="detail-message">Your message</label><textarea id="detail-message" name="message" maxLength={4000} rows={3} required placeholder={`Hi, is ${book.title} still available?`} /><button className="button button-red" type="submit" disabled={chatBusy}>{chatBusy ? 'Please wait…' : 'Send message'}</button></form>{chatError && <p className="account-error" role="alert">{chatError}</p>}{chatNotice && <p role="status">{chatNotice}</p>}</section>}
             </section>
           </div>
@@ -155,5 +178,7 @@ export default function BookDetailPage({ id, exampleTitle }) {
     </div>
   );
 }
+
+
 
 

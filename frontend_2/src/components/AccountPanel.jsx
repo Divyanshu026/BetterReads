@@ -98,7 +98,7 @@ export default function AccountPanel({ onAuthenticated }) {
       <div className="account-panel">
         <p>Welcome, {user.name || 'reader'}.</p>
         <p className="account-email">{user.email}</p>
-        <p className="panel-note">Your wishlist and book bag are kept for this browser session.</p>
+        <p className="panel-note">Your wishlist is kept for this browser session.</p>
         <button className="button button-red" type="button" onClick={() => setShowInbox(true)}>Messages</button>
         <button className="detail-secondary account-logout" type="button" onClick={() => {
           clearToken();
@@ -137,4 +137,5 @@ export default function AccountPanel({ onAuthenticated }) {
     </div>
   );
 }
+
 
