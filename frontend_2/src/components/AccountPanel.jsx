@@ -92,13 +92,14 @@ export default function AccountPanel({ onAuthenticated }) {
   }
 
   if (checking) return <p role="status">Loading your account…</p>;
-  if (user && showInbox) return <MessageInbox user={user} onClose={() => setShowInbox(false)} />;
+  if (user && showInbox) return <><button type="button" className="listing-return" onClick={() => setShowInbox(false)}>Back to profile</button><MessageInbox user={user} /></>;
   if (user) {
     return (
       <div className="account-panel">
         <p>Welcome, {user.name || 'reader'}.</p>
         <p className="account-email">{user.email}</p>
-        <p className="panel-note">Your wishlist is kept for this browser session.</p>
+        <p className="panel-note">Your books, requests, and reading list are ready.</p>
+        <p><a className="detail-secondary" href="/readers/me">My profile &amp; listings</a> <a className="detail-secondary" href="/wishlist">Wishlist</a> <a className="detail-secondary" href="/inbox?tab=requests">Requests</a></p>
         <button className="button button-red" type="button" onClick={() => setShowInbox(true)}>Messages</button>
         <button className="detail-secondary account-logout" type="button" onClick={() => {
           clearToken();

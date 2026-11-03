@@ -1,33 +1,17 @@
 # BetterReads frontend 2
 
-A standalone editorial homepage concept for BetterReads, with six illustrative book listings. The shelf, search, saved-books panel, mobile navigation, listings, and messaging use the frontend and existing API. Saved books are temporary browser-session state. Exchange requests are sent as messages; community features and location matching are not yet connected.
+The React/Vite frontend for BetterReads' book exchange experience.
 
-## Run locally
+## Run and verify
 
-Use the repository's Linux Node.js setup from WSL:
+Use Node.js 22.12 or later in WSL. Start the backend with MongoDB and the settings described in `backend/.env.example`, then run `npm install` and `npm run dev` in this directory. Vite proxies `/api` to the backend. Run `npm run build` to build the frontend. With the root Playwright dependencies and Chromium installed, run `../node_modules/.bin/playwright test -c playwright.config.cjs` for the browser flows; those tests mock API responses and do not touch the database.
 
-```sh
-cd /home/dvyanshu_linux/projects/BetterReads/frontend_2
-npm install
-npm run dev
-```
+Production hosting must serve `index.html` for frontend routes such as `/books/:id`, `/inbox`, `/community`, and `/readers/:id`. Route `/api` to the backend or set `VITE_API_URL` at build time.
 
-Vite uses port 5173, or the next available port. Use `npm run build` to create a production bundle.
+## Data and current limits
 
-## Accounts and API
+Accounts, listings, uploaded photos, reader profiles, signed-in wishlists, chats, and exchange offers use the existing API. Readers can create an exchange request offering one of their own books, and the recipient can accept or decline it; the sender can cancel a pending offer. The current backend immediately marks both books exchanged on acceptance. An optional request message is sent separately as a chat message, rather than stored on the offer.
 
-Start the backend on port 5000 with a persistent MongoDB connection and `JWT_SECRET` configured in `backend/.env` (see `backend/.env.example`), then run the frontend. Vite proxies `/api` requests to the backend during development; restart Vite after changing its configuration. The profile button opens signup and login. Account sessions last for the browser tab unless Remember me is selected; remembered sessions remain until logout or token expiry. Sessions are validated with the API when the profile opens. The wishlist on this frontend remains browser-session state.
+The inbox uses the existing chat API and polls for unread counts; it does not provide live Socket.IO updates. Book context is passed when opening a conversation from a book and is not permanently associated with a chat by the current API. Borrow requests, exchange completion workflows, durable request notifications, and server-side duplicate-request protection need backend support. Acceptance and delivery of a message depend on the running API.
 
-For a deployed frontend, route `/api` to the backend on the same origin or set `VITE_API_URL` at build time to the backend origin. Use HTTPS and configure the backend `FRONTEND_URL` to match the deployed frontend. The demo server uses disposable data and does not persist accounts after it stops.
-
-## Book listings
-
-Signed-in readers can use the **List a book** page at `/list-book` to create a listing through the backend. Configure deployed hosting to serve the frontend entry point for this route. The shelf loads available listings from `/api/books` and marks the built-in example books. Readers can upload up to four PNG, JPEG or WebP photos (5 MB each); the first is the cover. Photos use Cloudinary if configured, or backend local storage otherwise. Book listings are stored in MongoDB; the homepage wishlist remains temporary. Restart Vite after updating its proxy configuration.
-
-## Book details and messages
-
-The shelf links to `/books/:id` for reader listings and `/books/example/:title` for illustrative books. Production hosting must route these paths to the frontend entry point. The detail page uses the existing book and chat APIs; signed-in readers can message a lister and read or reply from **Profile → Messages**. The wishlist is a browser-session list; exchange requests are messages and are not yet structured offers.
-
-## Browse books
-
-The `/books` catalog loads available reader listings from the backend and supports title, author, and genre search. Configure deployed hosting to serve the frontend entry point for `/books` and `/books/:id`.
+Community posts, comments, and likes are a local browser preview and are not shared. City filtering is available, but geocoding, distance matching, and meetup preferences need additional services and data. Some catalog filters only apply if listings contain the corresponding fields. Built-in example listings and their locally stored wishlist entries are illustrative, not real exchange offers.

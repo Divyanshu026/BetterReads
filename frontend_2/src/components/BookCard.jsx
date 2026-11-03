@@ -12,6 +12,7 @@ export default function BookCard({ book, index }) {
       <div className="minimal-book-details">
         <h3>{book.title}</h3>
         <p>{book.note}</p>
+        {book.location && <small className="book-card-location">{book.location}</small>}
         <a href={href} aria-label={`View details for ${book.title}`}>View details <span aria-hidden="true">↗</span></a>
       </div>
     </article>

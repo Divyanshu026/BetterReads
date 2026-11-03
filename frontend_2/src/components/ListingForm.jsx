@@ -14,24 +14,15 @@ export default function ListingForm({ photos, onBusyChange, onCreated, onSignIn 
     if (busy) return;
     setError('');
     const form = new FormData(event.currentTarget);
-    const priceText = String(form.get('price')).trim();
-    if (!/^\d+(\.\d{1,2})?$/.test(priceText)) {
-      setError('Enter a valid price with up to two decimal places.');
-      return;
-    }
-    const priceCents = Math.round(Number(priceText) * 100);
-    if (!Number.isSafeInteger(priceCents) || priceCents > 10000000) {
-      setError('Price must be between ₹0 and ₹100,000.');
-      return;
-    }
+    if (!photos.length) { setError('Add at least one book photo.'); return; }
     const payload = {
       title: String(form.get('title')).trim(),
       author: String(form.get('author')).trim(),
       genre: String(form.get('genre')).trim(),
       condition: String(form.get('condition')),
-      description: String(form.get('description')).trim(),
+      description: [String(form.get('description')).trim(), String(form.get('interests')).trim() && 'Interested in: ' + String(form.get('interests')).trim()].filter(Boolean).join('\n\n'),
       city: String(form.get('city')).trim(),
-      priceCents,
+      priceCents: 0,
       photos: [],
       barterAvailable: form.has('barter'),
     };
@@ -101,12 +92,13 @@ export default function ListingForm({ photos, onBusyChange, onCreated, onSignIn 
       <label>Author<input name="author" maxLength={100} required /></label>
       <div className="listing-row">
         <label>Condition<select name="condition" defaultValue="Used"><option>New</option><option>Like New</option><option>Used</option></select></label>
-        <label>Price (₹)<input name="price" type="number" min="0" max="100000" step="0.01" required /></label>
+        <label>City or area<input name="city" maxLength={100} required /></label>
       </div>
-      <label>Genre<input name="genre" maxLength={100} /></label>
-      <label>City<input name="city" maxLength={100} /></label>
-      <label>Description<textarea name="description" maxLength={3000} rows={3} /></label>
-      <label className="account-remember"><input name="barter" type="checkbox" /> Open to an exchange</label>
+      <label>Genre<input name="genre" maxLength={100} required /></label>
+      <label>Description<textarea name="description" maxLength={2700} rows={3} required /></label>
+      <label className="account-remember"><input name="barter" type="checkbox" defaultChecked /> Available for exchange</label>
+      <label>Books you would like in return (optional)<input name="interests" maxLength={250} /></label>
+      <p className="detail-note">Borrowing and meetup availability are not supported yet. You can discuss arrangements in chat.</p>
       {error && <p className="account-error" role="alert">{error}</p>}
       {sessionExpired && <button type="button" className="text-link" onClick={onSignIn}>Log in again</button>}
       <button className="button button-red account-submit" type="submit" disabled={busy}>{busy ? 'Listing book…' : 'List book'}</button>

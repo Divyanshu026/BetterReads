@@ -1,63 +1,63 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, MapPin, Search, SlidersHorizontal } from 'lucide-react';
 import BookCard from './components/BookCard.jsx';
+import InboxLink from './components/InboxLink.jsx';
+import { getAllBooks, localGet, localSet, photoUrl } from './services/api.js';
 
-const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-const photoUrl = (url) => url.startsWith('/uploads/') ? apiBase + url : url;
+const emptyFilters = { type: '', genre: '', authors: [], condition: '', availability: '', city: '' };
+const types = ['Fiction', 'Non-fiction', 'Academic', 'Comics/Manga', 'Biography', 'Self-help', 'Other'];
+const genres = ['Fantasy', 'Mystery', 'Romance', 'Thriller', 'Science Fiction', 'History', 'Philosophy', 'Technology', 'Other'];
+const text = (value) => String(value || '').toLocaleLowerCase();
 
 export default function CatalogPage() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
+  const [filters, setFilters] = useState(() => ({ ...emptyFilters, city: localGet('betterreads.city', '') }));
+  const [draft, setDraft] = useState(filters);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [authorSearch, setAuthorSearch] = useState('');
+  const [locationMessage, setLocationMessage] = useState('');
+  const [sort, setSort] = useState('newest');
   const [reload, setReload] = useState(0);
   const [notice] = useState(() => sessionStorage.getItem('betterreads.listingCreated') === '1');
-
   useEffect(() => { if (notice) sessionStorage.removeItem('betterreads.listingCreated'); }, [notice]);
   useEffect(() => {
-    const controller = new AbortController();
-    async function load() {
-      setLoading(true); setError('');
-      try {
-        const items = [];
-        let page = 1;
-        let total = 0;
-        do {
-          const response = await fetch(`${apiBase}/api/books?status=available&limit=100&page=${page}`, { signal: controller.signal });
-          if (!response.ok || !(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Unable to load listings. Please try again.');
-          const data = await response.json();
-          if (!Array.isArray(data)) throw new Error('Unable to load listings. Please try again.');
-          items.push(...data);
-          total = Number(response.headers.get('X-Total-Count') || data.length);
-          if (!data.length) break;
-          page += 1;
-        } while (items.length < total);
-        setBooks(items);
-      } catch (err) { if (err.name !== 'AbortError') setError(err.message || 'Unable to load listings. Please try again.'); }
-      finally { if (!controller.signal.aborted) setLoading(false); }
-    }
-    load();
+    const controller = new AbortController(); setLoading(true); setError('');
+    getAllBooks('&status=available', controller.signal).then(setBooks)
+      .catch((err) => { if (err.name !== 'AbortError') setError(err.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [reload]);
-
-  const query = search.trim().toLocaleLowerCase();
-  const matches = books.filter((book) => [book.title, book.author, book.genre].some((value) => String(value || '').toLocaleLowerCase().includes(query)));
-
-  return (
-    <div className="catalog-page">
-      <header className="listing-page-header">
-        <a className="brand" href="/" aria-label="BetterReads home"><img className="brand-icon" src="/betterreads-reader.png" alt="" /><span className="brand-name">BETTERREADS<small>BOOKS · NEW BEGINNINGS</small></span></a>
-        <a className="listing-back" href="/"><ArrowLeft size={17} aria-hidden="true" /> Back to home</a>
-      </header>
-      <main className="catalog-main">
-        <div className="catalog-heading"><div><span className="eyebrow">FROM ONE READER TO ANOTHER</span><h1>Find your <em>next chapter.</em></h1><p>Explore books listed by readers.</p></div><a className="button button-red" href="/list-book">List a book <span aria-hidden="true">↗</span></a></div>
-        {notice && <p className="catalog-notice" role="status">Your book has been listed.</p>}
-        <div className="catalog-toolbar"><label className="catalog-search"><Search size={19} aria-hidden="true" /><span className="visually-hidden">Search listings</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search books, authors, genres..." /></label><span aria-live="polite">{loading ? 'Loading books…' : `${matches.length} ${matches.length === 1 ? 'book' : 'books'}`}</span></div>
-        {loading ? <p role="status">Loading available books…</p> : error ? <div role="alert"><p>{error}</p><button type="button" className="text-link" onClick={() => setReload((n) => n + 1)}>Try again</button></div> : matches.length ? (
-          <div className="catalog-grid">{matches.map((book, index) => <BookCard key={book._id} index={index} book={{ id: book._id, title: book.title, state: book.condition, note: book.description || `By ${book.author || 'a reader'}`, cover: book.photos?.[0] ? photoUrl(book.photos[0]) : '/covers/placeholder.svg', coverFallback: '/covers/placeholder.svg' }} />)}</div>
-        ) : <div className="catalog-empty"><p>{query ? 'No books match your search.' : 'No books have been listed yet.'}</p>{query ? <button type="button" className="text-link" onClick={() => setSearch('')}>Clear search</button> : <a className="text-link" href="/list-book">List a book</a>}</div>}
-      </main>
-    </div>
-  );
+  const authors = [...new Set(books.map((book) => book.author).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const cities = [...new Set(books.map((book) => book.location?.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const query = text(search.trim());
+  const matches = books.filter((book) => {
+    const genre = text(book.genre); const type = text(book.bookType); const city = text(book.location?.city);
+    return (!query || [book.title, book.author, book.genre].some((value) => text(value).includes(query))) &&
+      (!filters.genre || (filters.genre === 'Other' ? genre && !genres.slice(0, -1).some((g) => text(g) === genre) : genre === text(filters.genre))) &&
+      (!filters.type || (filters.type === 'Other' ? type && !types.slice(0, -1).some((t) => text(t) === type) : type === text(filters.type))) &&
+      (!filters.condition || text(book.condition) === text(filters.condition)) &&
+      (!filters.authors.length || filters.authors.includes(book.author)) &&
+      (!filters.city || city === text(filters.city.trim())) &&
+      (!filters.availability || (filters.availability === 'exchange' ? book.barterAvailable : filters.availability === 'borrow' ? book.borrowAvailable === true : book.meetupAvailable === true));
+  }).sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title) : sort === 'relevance' && query ? Number(text(b.title).startsWith(query)) - Number(text(a.title).startsWith(query)) : new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  const active = [filters.type, filters.genre, ...filters.authors, filters.condition, filters.availability && ({ exchange: 'Exchange', borrow: 'Borrowing', meetup: 'Meetup' }[filters.availability]), filters.city].filter(Boolean);
+  function apply() { setFilters(draft); localSet('betterreads.city', draft.city.trim()); setFilterOpen(false); }
+  function clear() { setFilters(emptyFilters); setDraft(emptyFilters); localSet('betterreads.city', ''); setAuthorSearch(''); }
+  function detectLocation() {
+    setLocationMessage('');
+    if (!navigator.geolocation) { setLocationMessage('Location is unavailable. Enter a city instead.'); return; }
+    navigator.geolocation.getCurrentPosition(() => setLocationMessage('Location detected. City lookup is not configured, so please enter your city.'), () => setLocationMessage('Location permission was not granted. Enter a city instead.'), { timeout: 10000, maximumAge: 300000 });
+  }
+  return <div className="catalog-page"><header className="listing-page-header"><a className="brand" href="/" aria-label="BetterReads home"><img className="brand-icon" src="/betterreads-reader.png" alt="" /><span className="brand-name">BETTERREADS<small>BOOKS · NEW BEGINNINGS</small></span></a><nav className="subpage-nav"><a href="/community">Community</a><a href="/wishlist">Wishlist</a><InboxLink /><a className="listing-back" href="/"><ArrowLeft size={17} aria-hidden="true" /> Home</a></nav></header><main className="catalog-main">
+    <div className="catalog-heading"><div><span className="eyebrow">FROM ONE READER TO ANOTHER</span><h1>Find your <em>next chapter.</em></h1><p>Explore books listed by readers.</p></div><a className="button button-red" href="/list-book">List a book <span aria-hidden="true">↗</span></a></div>
+    {notice && <p className="catalog-notice" role="status">Your book has been listed.</p>}
+    <div className="catalog-toolbar"><label className="catalog-search"><Search size={19} aria-hidden="true" /><span className="visually-hidden">Search listings</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search books, authors, genres..." /></label><button type="button" className="detail-secondary" aria-expanded={filterOpen} aria-controls="book-filters" onClick={() => { setDraft(filters); setFilterOpen(!filterOpen); }}><SlidersHorizontal size={16} /> Filters {active.length > 0 && `(${active.length})`}</button><label className="catalog-sort">Sort <select value={sort} onChange={(e) => setSort(e.target.value)}><option value="newest">Newest</option><option value="title">Title</option><option value="relevance">Relevance</option></select></label><span aria-live="polite">{loading ? 'Loading…' : `${matches.length} ${matches.length === 1 ? 'book' : 'books'}`}</span></div>
+    {filterOpen && <section id="book-filters" className="filters-panel" aria-label="Book filters"><div className="filters-grid"><label>Book type<select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}><option value="">All types</option>{types.map((v) => <option key={v}>{v}</option>)}</select></label><label>Genre<select value={draft.genre} onChange={(e) => setDraft({ ...draft, genre: e.target.value })}><option value="">All genres</option>{genres.map((v) => <option key={v}>{v}</option>)}</select></label><label>Condition<select value={draft.condition} onChange={(e) => setDraft({ ...draft, condition: e.target.value })}><option value="">All conditions</option>{['New', 'Like New', 'Good', 'Fair', 'Used'].map((v) => <option key={v}>{v}</option>)}</select></label><label>Availability<select value={draft.availability} onChange={(e) => setDraft({ ...draft, availability: e.target.value })}><option value="">All books</option><option value="exchange">Exchange</option><option value="borrow">Borrowing</option><option value="meetup">Meetup/handover</option></select></label><label>City or area<input list="book-cities" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} placeholder="All locations" /><datalist id="book-cities">{cities.map((city) => <option key={city} value={city} />)}</datalist></label><div className="filter-location"><button type="button" className="text-link" onClick={detectLocation}><MapPin size={15} /> Use my location</button><small>City lookup is not configured; choose a city manually.</small>{locationMessage && <small role="status">{locationMessage}</small>}</div></div><fieldset className="filter-authors"><legend>Authors</legend><input aria-label="Find an author" value={authorSearch} onChange={(e) => setAuthorSearch(e.target.value)} placeholder="Find an author" /><div>{authors.filter((name) => text(name).includes(text(authorSearch))).map((name) => <label key={name}><input type="checkbox" checked={draft.authors.includes(name)} onChange={() => setDraft({ ...draft, authors: draft.authors.includes(name) ? draft.authors.filter((a) => a !== name) : [...draft.authors, name] })} /> {name}</label>)}</div></fieldset><p className="detail-note">Type, borrowing and meetup filters only match listings that provide those details.</p><div className="filter-actions"><button type="button" className="button button-red" onClick={apply}>Apply filters</button><button type="button" className="detail-secondary" onClick={clear}>Clear all</button></div></section>}
+    {active.length > 0 && <div className="active-filters" aria-label="Active filters">{active.map((value, index) => <span key={`${value}-${index}`}>{value}</span>)}<button type="button" onClick={clear}>Clear all</button></div>}
+    {loading ? <p role="status">Loading available books…</p> : error ? <div role="alert"><p>{error}</p><button type="button" className="text-link" onClick={() => setReload((n) => n + 1)}>Try again</button></div> : matches.length ? <div className="catalog-grid">{matches.map((book, index) => <BookCard key={book._id} index={index} book={{ id: book._id, title: book.title, state: book.condition, location: book.location?.city, note: book.description || `By ${book.author || 'a reader'}`, cover: book.photos?.[0] ? photoUrl(book.photos[0]) : '/covers/placeholder.svg', coverFallback: '/covers/placeholder.svg' }} />)}</div> : <div className="catalog-empty"><p>{query || active.length ? 'No books match these filters.' : 'No books have been listed yet.'}</p><button type="button" className="text-link" onClick={() => { setSearch(''); clear(); }}>Show all books</button></div>}
+  </main></div>;
 }
 

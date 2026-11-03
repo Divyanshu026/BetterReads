@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Camera, X } from 'lucide-react';
 import AccountPanel from './components/AccountPanel.jsx';
 import ListingForm from './components/ListingForm.jsx';
+import InboxLink from './components/InboxLink.jsx';
 
 export default function ListingPage() {
   const [signingIn, setSigningIn] = useState(false);
@@ -45,7 +46,7 @@ export default function ListingPage() {
           <img className="brand-icon" src="/betterreads-reader.png" alt="" />
           <span className="brand-name">BETTERREADS<small>BOOKS · NEW BEGINNINGS</small></span>
         </a>
-        <a className="listing-back" href="/books"><ArrowLeft size={17} aria-hidden="true" /> Back to books</a>
+        <div className="subpage-nav"><InboxLink /><a className="listing-back" href="/books"><ArrowLeft size={17} aria-hidden="true" /> Back to books</a></div>
       </header>
       <main className="listing-page-main">
         <div className="listing-page-intro">
@@ -94,5 +95,6 @@ export default function ListingPage() {
     </div>
   );
 }
+
 
 

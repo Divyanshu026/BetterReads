@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import BookCard from './components/BookCard.jsx';
 import AccountPanel from './components/AccountPanel.jsx';
+import InboxLink from './components/InboxLink.jsx';
 import { exampleBooks } from './exampleBooks.js';
 import {
   ArrowDown,
@@ -217,9 +218,10 @@ export default function App() {
     ['Home', '#top'],
     ['Browse books', '/books'],
     ['List a book', '/list-book'],
-    ['Community', '#community', () => setPanel('community')],
-    ['Wishlist', '#wishlist', () => setPanel('saved')],
-    ['Profile', '#profile', () => setPanel('profile')],
+    ['Community', '/community'],
+    ['Wishlist', '/wishlist'],
+    ['Messages & requests', '/inbox'],
+    ['Profile', '/readers/me'],
     ['Questions', '#faq'],
   ];
 
@@ -234,7 +236,7 @@ export default function App() {
           <a href="#top">Home</a>
           <a href="/books">Browse books</a>
           <a href="/list-book">List a book</a>
-          <button className="community-nav-button" type="button" onClick={() => setPanel('community')}>Community</button>
+          <a href="/community">Community</a>
         </nav>
         <form className="header-search" role="search" onSubmit={submitSearch}>
           <Search size={19} aria-hidden="true" />
@@ -250,18 +252,11 @@ export default function App() {
           />
         </form>
         <div className="header-actions">
-          <button
-            className="header-icon-button wishlist-link"
-            onClick={() => setPanel('saved')}
-            aria-label={`Open wishlist, ${saved.length} saved books`}
-            title="Wishlist"
-          >
-            <Heart size={19} aria-hidden="true" />
-            <span>{saved.length}</span>
-          </button>
+          <InboxLink />
+          <a className="header-icon-button wishlist-link" href="/wishlist" aria-label="Open wishlist" title="Wishlist"><Heart size={19} aria-hidden="true" /></a>
           <button
             className="header-icon-button profile-link"
-            onClick={() => setPanel('profile')}
+            onClick={() => window.location.assign('/readers/me')}
             aria-label="Open reader profile"
             title="Profile"
           >
@@ -318,10 +313,10 @@ export default function App() {
               className="button button-red menu-cta"
               onClick={() => {
                 setMenu(false);
-                setPanel('saved');
+                window.location.assign('/wishlist');
               }}
             >
-              View wishlist ({saved.length}) <Heart size={16} aria-hidden="true" />
+              View wishlist <Heart size={16} aria-hidden="true" />
             </button>
           </section>
         </div>
@@ -575,7 +570,7 @@ export default function App() {
           </nav>
           <div className="footer-links">
             <span className="eyebrow pale">YOUR READING LIST</span>
-            <button onClick={() => setPanel('saved')}>Saved books ({saved.length})</button>
+            <a href="/wishlist">Saved books</a>
             <a href="#top">
               Back to the top <ArrowUpRight size={14} />
             </a>
@@ -593,6 +588,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 

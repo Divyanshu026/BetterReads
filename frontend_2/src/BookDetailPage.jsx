@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Heart, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
+import WishlistButton from './components/WishlistButton.jsx';
+import ExchangeRequestModal from './components/ExchangeRequestModal.jsx';
+import InboxLink from './components/InboxLink.jsx';
 import AccountPanel from './components/AccountPanel.jsx';
 import { exampleBooks } from './exampleBooks.js';
 
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const getToken = () => localStorage.getItem('betterreads.authToken') || sessionStorage.getItem('betterreads.authToken');
-const readList = (key) => { try { const value = JSON.parse(sessionStorage.getItem(key) || '[]'); return Array.isArray(value) ? value : []; } catch { return []; } };
 const photoUrl = (url) => url.startsWith('/uploads/') ? apiBase + url : url;
 
 async function request(path, options = {}) {
@@ -25,14 +27,11 @@ export default function BookDetailPage({ id, exampleTitle }) {
   const [authVersion, setAuthVersion] = useState(0);
   const [showAccount, setShowAccount] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
-  const [saved, setSaved] = useState(() => readList('betterreads.saved'));
-  const [showChat, setShowChat] = useState(false);
-  const [chatId, setChatId] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [showRequest, setShowRequest] = useState(false);
+  const [requestNotice, setRequestNotice] = useState('');
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState('');
-  const [chatNotice, setChatNotice] = useState('');
-  const [requestSent, setRequestSent] = useState(false);
+  const [requestStatus, setRequestStatus] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -61,78 +60,28 @@ export default function BookDetailPage({ id, exampleTitle }) {
     return () => { active = false; };
   }, [authVersion]);
 
-  useEffect(() => { sessionStorage.setItem('betterreads.saved', JSON.stringify(saved)); }, [saved]);
+
+  useEffect(() => {
+    let active = true;
+    if (!user || !id) { setRequestStatus(''); return () => { active = false; }; }
+    request(`/api/offers?listingId=${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then((offers) => { if (active) { const mine = offers.find((offer) => String(offer.proposerId?._id || offer.proposerId) === String(user.id)); setRequestStatus(mine?.status || ''); } })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [id, user]);
 
   async function openChat() {
     if (!user) { setShowAccount(true); return; }
-    setShowChat(true);
-    setChatError('');
-    setChatBusy(true);
+    if (!book?.ownerId?._id || String(book.ownerId._id) === String(user.id) || chatBusy) return;
+    setChatBusy(true); setChatError('');
     try {
-      const headers = { Authorization: `Bearer ${getToken()}` };
-      const chats = await request('/api/chats', { headers });
-      const existing = chats.find((chat) => String(chat.participant?._id) === String(book.ownerId?._id));
-      if (existing) {
-        setChatId(existing._id);
-        const detail = await request(`/api/chats/${encodeURIComponent(existing._id)}`, { headers });
-        setMessages(detail.messages || []);
-      }
-    } catch (err) { setChatError(err.message); }
-    finally { setChatBusy(false); }
-  }
-
-  async function requestExchange() {
-    if (!user) { setShowAccount(true); return; }
-    if (!book?.ownerId?._id || chatBusy || requestSent || String(user.id) === String(book.ownerId._id)) return;
-    setShowChat(true);
-    setChatBusy(true);
-    setChatError('');
-    setChatNotice('');
-    try {
-      const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` };
-      let current = chatId;
-      let previous = messages;
-      if (!current) {
-        const chat = await request('/api/chats', { method: 'POST', headers, body: JSON.stringify({ participantId: book.ownerId._id }) });
-        current = chat._id;
-        previous = chat.messages || [];
-        setChatId(current);
-      }
-      const text = `Hi! I’m interested in exchanging books for “${book.title}”. Would you be interested? ${window.location.origin}/books/${encodeURIComponent(book._id)}`;
-      const message = await request(`/api/chats/${encodeURIComponent(current)}/messages`, { method: 'POST', headers, body: JSON.stringify({ text }) });
-      setMessages([...previous, message]);
-      setRequestSent(true);
-      setChatNotice('Exchange request sent. You can discuss the details below.');
-    } catch (err) { setChatError(err.message); }
-    finally { setChatBusy(false); }
-  }
-  async function sendMessage(event) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const text = String(new FormData(form).get('message') || '').trim();
-    if (!text || chatBusy) return;
-    setChatBusy(true);
-    setChatError('');
-    setChatNotice('');
-    try {
-      const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` };
-      let current = chatId;
-      if (!current) {
-        const chat = await request('/api/chats', { method: 'POST', headers, body: JSON.stringify({ participantId: book.ownerId._id }) });
-        current = chat._id;
-        setChatId(current);
-      }
-      const message = await request(`/api/chats/${encodeURIComponent(current)}/messages`, { method: 'POST', headers, body: JSON.stringify({ text }) });
-      setMessages((items) => [...items, message]);
-      form.reset();
-      setChatNotice('Message sent.');
-    } catch (err) { setChatError(err.message); }
-    finally { setChatBusy(false); }
+      const chat = await request('/api/chats', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ participantId: book.ownerId._id }) });
+      window.location.assign(`/inbox?chat=${encodeURIComponent(chat._id)}&book=${encodeURIComponent(book._id)}`);
+    } catch (err) { setChatError(err.message); setChatBusy(false); }
   }
 
   const key = book?.example ? book.title : book?._id;
   const images = book ? (book.photos?.length ? book.photos.map(photoUrl) : ['/covers/placeholder.svg']) : [];
-  const isSaved = saved.includes(key);
   const ownerId = book?.ownerId?._id;
   const isOwner = user && ownerId && String(user.id) === String(ownerId);
 
@@ -140,7 +89,7 @@ export default function BookDetailPage({ id, exampleTitle }) {
     <div className="book-detail-page">
       <header className="listing-page-header">
         <a className="brand" href="/" aria-label="BetterReads home"><img className="brand-icon" src="/betterreads-reader.png" alt="" /><span className="brand-name">BETTERREADS<small>BOOKS · NEW BEGINNINGS</small></span></a>
-        <a className="listing-back" href="/books"><ArrowLeft size={17} aria-hidden="true" /> Back to books</a>
+        <div className="subpage-nav"><InboxLink /><a className="listing-back" href="/books"><ArrowLeft size={17} aria-hidden="true" /> Back to books</a></div>
       </header>
       <main className="book-detail-main">
         {loading ? <p role="status">Loading book details…</p> : error ? <p role="alert">{error}</p> : book && (
@@ -153,24 +102,27 @@ export default function BookDetailPage({ id, exampleTitle }) {
               <span className="eyebrow">{book.example ? 'EXAMPLE BOOK' : 'READER LISTING'}</span>
               <h1>{book.title}</h1>
               <p className="detail-author">by {book.author || 'Unknown author'}</p>
-              <strong className="detail-price">{book.example ? book.price : `₹${((book.priceCents || 0) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`}</strong>
+              <strong className="detail-price">{book.example ? 'Example book' : book.barterAvailable ? 'Open to exchange' : 'Contact reader'}</strong>
               <dl className="detail-facts">
-                <div><dt>Listed by</dt><dd>{book.example ? 'Example listing' : book.ownerId?.name || 'Reader'}</dd></div>
+                <div><dt>Listed by</dt><dd>{book.example ? 'Example listing' : ownerId ? <a href={`/readers/${ownerId}`}>{book.ownerId?.name || 'Reader'}</a> : 'Reader'}</dd></div>
                 <div><dt>Condition</dt><dd>{book.example ? book.state : book.condition}</dd></div>
                 <div><dt>Location</dt><dd>{book.location?.city || 'Not provided'}</dd></div>
                 {book.genre && <div><dt>Genre</dt><dd>{book.genre}</dd></div>}
+                {!book.example && <><div><dt>Availability</dt><dd>{book.status}</dd></div><div><dt>Exchange</dt><dd>{book.barterAvailable ? 'Available' : 'Not offered'}</dd></div><div><dt>Listed</dt><dd>{book.createdAt ? new Date(book.createdAt).toLocaleDateString() : 'Not provided'}</dd></div></>}
               </dl>
               <p className="detail-description">{book.example ? book.note : book.description || 'No description provided.'}</p>
               {book.example && <p className="detail-note">This is an example book and is not available for purchase or chat.</p>}
               {!book.example && book.status !== 'available' && <p className="detail-note">This book is currently {book.status}.</p>}
               <div className="detail-actions">
-                <button className="button button-red" type="button" disabled={book.example || book.status !== 'available' || !ownerId || isOwner || chatBusy || requestSent} onClick={requestExchange}><MessageCircle size={17} />{isOwner ? 'Your listing' : requestSent ? 'Request sent' : chatBusy ? 'Please wait…' : 'Request exchange'}</button>
-                <button className="detail-secondary" type="button" aria-pressed={isSaved} onClick={() => setSaved((items) => isSaved ? items.filter((item) => item !== key) : [...items, key])}><Heart size={18} fill={isSaved ? 'currentColor' : 'none'} />{isSaved ? 'Saved' : 'Save to wishlist'}</button>
-                {!book.example && <button className="detail-secondary" type="button" disabled={!ownerId || isOwner} onClick={openChat}><MessageCircle size={18} />{isOwner ? 'Your listing' : 'Message reader'}</button>}
+                <button className="button button-red" type="button" disabled={book.example || book.status !== 'available' || !ownerId || isOwner || requestStatus === 'pending' || requestStatus === 'accepted' || !book.barterAvailable} onClick={() => user ? setShowRequest(true) : setShowAccount(true)}><MessageCircle size={17} />{isOwner ? 'Your listing' : requestStatus === 'pending' ? 'Request pending' : requestStatus === 'accepted' ? 'Request accepted' : 'Ask for exchange'}</button>
+                <WishlistButton bookId={key} example={book.example} onSignIn={() => setShowAccount(true)} />
+                {!book.example && <button className="detail-secondary" type="button" disabled={!ownerId || isOwner || chatBusy} onClick={openChat}><MessageCircle size={18} />{isOwner ? 'Your listing' : chatBusy ? 'Opening…' : 'Message lister'}</button>}
               </div>
-              <p className="detail-note">Your wishlist lasts for this browser session. Exchange requests are sent as messages.</p>
-              {showAccount && <section className="detail-account" aria-label="Log in or sign up"><h2>Log in to message</h2><p>After signing in, select Request exchange to send your request.</p><AccountPanel onAuthenticated={() => { setShowAccount(false); setAuthVersion((n) => n + 1); }} /><button type="button" className="listing-return" onClick={() => setShowAccount(false)}>Close</button></section>}
-              {showChat && <section className="detail-chat" aria-labelledby="detail-chat-title"><h2 id="detail-chat-title">Message {book.ownerId?.name || 'the reader'}</h2><p>Ask about this book or arrange an exchange.</p>{messages.length > 0 && <div className="detail-messages">{messages.map((message) => <p key={message._id}><strong>{String(message.senderId?._id || message.senderId) === String(user?.id) ? 'You' : book.ownerId?.name || 'Reader'}</strong> {message.text}</p>)}</div>}<form onSubmit={sendMessage}><label htmlFor="detail-message">Your message</label><textarea id="detail-message" name="message" maxLength={4000} rows={3} required placeholder={`Hi, is ${book.title} still available?`} /><button className="button button-red" type="submit" disabled={chatBusy}>{chatBusy ? 'Please wait…' : 'Send message'}</button></form>{chatError && <p className="account-error" role="alert">{chatError}</p>}{chatNotice && <p role="status">{chatNotice}</p>}</section>}
+              <p className="detail-note">Sign in to save books and exchange requests to your account.</p>
+              {requestNotice && <p role="status" className="catalog-notice">{requestNotice} <a href="/inbox?tab=requests">View requests</a></p>}
+              {showRequest && <ExchangeRequestModal book={book} user={user} onClose={() => setShowRequest(false)} onCreated={(_offer, warning) => { setShowRequest(false); setRequestStatus('pending'); setRequestNotice(warning || 'Exchange request sent.'); }} />}
+              {showAccount && <section className="detail-account" aria-label="Log in or sign up"><h2>Log in to message</h2><p>After signing in, choose an action to continue.</p><AccountPanel onAuthenticated={() => { setShowAccount(false); setAuthVersion((n) => n + 1); }} /><button type="button" className="listing-return" onClick={() => setShowAccount(false)}>Close</button></section>}
+              {chatError && <p role="alert" className="account-error">{chatError}</p>}
             </section>
           </div>
         )}
@@ -178,6 +130,10 @@ export default function BookDetailPage({ id, exampleTitle }) {
     </div>
   );
 }
+
+
+
+
 
 
 
