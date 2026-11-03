@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import BookCard from './components/BookCard.jsx';
+import AccountPanel from './components/AccountPanel.jsx';
+import { exampleBooks } from './exampleBooks.js';
 import {
   ArrowDown,
   ArrowRight,
@@ -17,88 +19,43 @@ import {
   X,
 } from 'lucide-react';
 
-const books = [
-  {
-    title: 'The Midnight Library',
-    author: 'Matt Haig',
-    price: '₹320',
-    genre: 'Fiction',
-    state: 'Like new',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780525559474-L.jpg?default=false',
-    coverFallback: '/covers/midnight.svg',
-    note: 'A second chance, between the shelves',
-  },
-  {
-    title: 'The Secret Garden',
-    author: 'Frances Hodgson Burnett',
-    price: '₹180',
-    genre: 'Classics',
-    state: 'Loved well',
-    cover: 'https://covers.openlibrary.org/b/isbn/9781464301971-L.jpg?default=false',
-    coverFallback: '/covers/garden.svg',
-    note: 'A classic ready for a new reader',
-  },
-  {
-    title: 'Atomic Habits',
-    author: 'James Clear',
-    price: '₹280',
-    genre: 'Non-fiction',
-    state: 'Very good',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg?default=false',
-    coverFallback: '/covers/atomic.svg',
-    note: 'Small changes, remarkable results',
-  },
-  {
-    title: 'Pride & Prejudice',
-    author: 'Jane Austen',
-    price: '₹210',
-    genre: 'Classics',
-    state: 'Like new',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780192815033-L.jpg?default=false',
-    coverFallback: '/covers/pride.svg',
-    note: 'A little wit never goes out of style',
-  },
-  {
-    title: 'The Hobbit',
-    author: 'J.R.R. Tolkien',
-    price: '₹350',
-    genre: 'Fantasy',
-    state: 'Very good',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780547928227-L.jpg?default=false',
-    coverFallback: '/covers/hobbit.svg',
-    note: 'An unexpected journey awaits',
-  },
-  {
-    title: 'The Adventures of Sherlock Holmes',
-    author: 'Arthur Conan Doyle',
-    price: '₹220',
-    genre: 'Mystery',
-    state: 'Very good',
-    cover: 'https://covers.openlibrary.org/b/isbn/9780140439072-L.jpg?default=false',
-    coverFallback: '/covers/sherlock.svg',
-    note: 'A clever mystery for a rainy day',
-  },
-];
+
+const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const readSessionList = (key) => { try { const data = JSON.parse(sessionStorage.getItem(key) || '[]'); return Array.isArray(data) ? data : []; } catch { return []; } };
+const bookKey = (book) => book.id || book.title;
+const listingPhoto = (url) => url.startsWith('/uploads/') ? apiBase + url : url;
+const mapListing = (book) => ({
+  id: book._id,
+  title: book.title,
+  author: book.author || 'Unknown author',
+  genre: book.genre || 'General',
+  state: book.condition,
+  price: `₹${(book.priceCents / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`,
+  cover: book.photos?.[0] ? listingPhoto(book.photos[0]) : '/covers/placeholder.svg',
+  photos: (book.photos || []).map(listingPhoto),
+  coverFallback: '/covers/placeholder.svg',
+  note: book.description || 'A book ready for its next reader',
+});
 const questions = [
   [
     'Can I buy a book from this page?',
-    'This page is a visual preview with sample listings. You can add a title to the local book bag, but checkout and delivery are not connected.',
+    'You can add books to your bag while you browse. Checkout and delivery are not available yet.',
   ],
   [
     'Can I propose a book exchange?',
-    'The swap labels are examples only. Exchange proposals are not available in this preview.',
+    'Exchange proposals are not available yet.',
   ],
   [
     'Can I list one of my books?',
-    'Listing creation is not available on this page. The books shown here are sample content.',
+    'Log in and choose List a book to create a listing.' ,
   ],
   [
     'Are the conditions and photos real?',
-    'The conditions and listing details are sample content. Book covers are sourced from Open Library and may differ by edition.',
+    'Listings marked as examples use illustrative details. Reader listings are provided by their owners.',
   ],
   [
     'Are the saved books and bag kept?',
-    'No. These controls work only in this browser page and reset when it reloads.',
+    'Your bag and saved books stay in this browser tab for the duration of the session.',
   ],
 ];
 
@@ -117,15 +74,33 @@ export default function App() {
   const [menu, setMenu] = useState(false);
   const [headerHidden, setHeaderHidden] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [liveBooks, setLiveBooks] = useState([]);
+  const [listingError, setListingError] = useState('');
   const [showAll, setShowAll] = useState(false);
-  const [bag, setBag] = useState([]);
-  const [saved, setSaved] = useState([]);
+  const [bag, setBag] = useState(() => readSessionList('betterreads.bag'));
+  const [saved, setSaved] = useState(() => readSessionList('betterreads.saved'));
   const [faq, setFaq] = useState(0);
   const [panel, setPanel] = useState('');
   const [toast, setToast] = useState('');
   const track = useRef(null);
   const heroVideoRef = useRef(null);
   const [carousel, setCarousel] = useState({ previous: false, next: false });
+
+  useEffect(() => { sessionStorage.setItem('betterreads.bag', JSON.stringify(bag)); }, [bag]);
+  useEffect(() => { sessionStorage.setItem('betterreads.saved', JSON.stringify(saved)); }, [saved]);
+
+  useEffect(() => {
+    if (sessionStorage.getItem('betterreads.listingCreated')) {
+      sessionStorage.removeItem('betterreads.listingCreated');
+      setToast('Your book has been listed.');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(''), 3000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   useEffect(() => {
     document.body.classList.toggle('menu-open', menu || Boolean(panel));
@@ -179,6 +154,33 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [menu, panel]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadListings() {
+      try {
+        const listings = [];
+        let page = 1;
+        let total = 0;
+        do {
+          const response = await fetch(`${apiBase}/api/books?status=available&limit=100&page=${page}`, { signal: controller.signal });
+          if (!response.ok || !(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Unable to load reader listings.');
+          const data = await response.json();
+          if (!Array.isArray(data)) throw new Error('Unable to load reader listings.');
+          listings.push(...data.map(mapListing));
+          total = Number(response.headers.get('X-Total-Count') || data.length);
+          if (data.length === 0) break;
+          page += 1;
+        } while (listings.length < total);
+        setLiveBooks(listings);
+        setListingError('');
+      } catch (error) {
+        if (error.name !== 'AbortError') setListingError('Reader listings are unavailable right now.');
+      }
+    }
+    loadListings();
+    return () => controller.abort();
+  }, []);
+  const books = [...liveBooks, ...exampleBooks];
   const normalizedSearch = searchQuery.trim().toLocaleLowerCase();
   const filteredBooks = books.filter((book) => {
     const matchesSearch =
@@ -202,39 +204,22 @@ export default function App() {
     updateCarousel();
     window.addEventListener('resize', updateCarousel);
     return () => window.removeEventListener('resize', updateCarousel);
-  }, [showAll, searchQuery]);
+  }, [showAll, searchQuery, liveBooks]);
   const scrollBooks = (direction) =>
     track.current?.scrollBy({
       left: direction * Math.max(280, track.current.clientWidth * 0.8),
       behavior: 'smooth',
     });
-  const browseAll = () => {
-    setShowAll(true);
-    setSearchQuery('');
-    document.querySelector('#shelf')?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const browseAll = () => window.location.assign('/books');
   const submitSearch = (event) => {
     event.preventDefault();
-    setShowAll(true);
-    document.querySelector('#shelf')?.scrollIntoView({ behavior: 'smooth' });
-  };
-  const addBook = (title) => {
-    setBag((items) => [...items, title]);
-    setToast(`${title} added to your local book bag`);
-    window.setTimeout(() => setToast(''), 2400);
-  };
-  const toggleSaved = (title) =>
-    setSaved((items) =>
-      items.includes(title) ? items.filter((item) => item !== title) : [...items, title],
-    );
-  const showListingInfo = () => {
-    setFaq(2);
-    document.querySelector('#faq')?.scrollIntoView({ behavior: 'smooth' });
+    const query = searchQuery.trim();
+    window.location.assign(query ? `/books?q=${encodeURIComponent(query)}` : '/books');
   };
   const nav = [
     ['Home', '#top'],
-    ['Browse books', '#shelf', browseAll],
-    ['List a book', '#faq', showListingInfo],
+    ['Browse books', '/books'],
+    ['List a book', '/list-book'],
     ['Community', '#community', () => setPanel('community')],
     ['Wishlist', '#wishlist', () => setPanel('saved')],
     ['Profile', '#profile', () => setPanel('profile')],
@@ -250,8 +235,8 @@ export default function App() {
         <Brand />
         <nav className="desktop-nav" aria-label="Main navigation">
           <a href="#top">Home</a>
-          <a href="#shelf" onClick={browseAll}>Browse books</a>
-          <a href="#faq" onClick={showListingInfo}>List a book</a>
+          <a href="/books">Browse books</a>
+          <a href="/list-book">List a book</a>
           <button className="community-nav-button" type="button" onClick={() => setPanel('community')}>Community</button>
         </nav>
         <form className="header-search" role="search" onSubmit={submitSearch}>
@@ -323,7 +308,7 @@ export default function App() {
             </button>
             <span className="eyebrow">A GOOD PLACE TO BEGIN</span>
             <h2 id="menu-title">Explore BetterReads</h2>
-            <p>Browse sample books and see how the reader-to-reader idea could work.</p>
+            <p>Find your next read and keep track of the books you love.</p>
             <nav aria-label="Mobile navigation">
               {nav.map(([label, href, action]) => (
                 <a
@@ -355,11 +340,11 @@ export default function App() {
 
       {panel && (
         <div
-          className="menu-backdrop panel-backdrop"
+          className={`menu-backdrop panel-backdrop ${panel === 'profile' ? 'account-backdrop' : ''}`}
           onMouseDown={(event) => event.target === event.currentTarget && setPanel('')}
         >
           <section
-            className="menu-panel book-panel"
+            className={`menu-panel book-panel ${panel === 'profile' ? 'account-dialog' : ''}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="panel-title"
@@ -371,25 +356,24 @@ export default function App() {
             <h2 id="panel-title">
               {panel === 'bag' ? 'Your book bag' : panel === 'profile' ? 'Reader profile' : panel === 'community' ? 'The BetterReads community' : 'Wishlist'}
             </h2>
-            <p>
+            {panel !== 'profile' && <p>
               {panel === 'bag'
-                ? 'A temporary list of sample books you added on this page.'
-                : panel === 'profile'
-                  ? 'You are browsing as a guest. Profiles and accounts are not available in this preview.'
-                  : panel === 'community'
-                    ? 'BetterReads is a reader-to-reader concept. Community profiles, messages, meetups, and event signups are not available in this preview.'
-                    : 'A temporary wishlist of books you saved on this page.'}
-            </p>
+                ? 'Books you have added to your bag during this visit.'
+                : panel === 'community'
+                    ? 'Community profiles, messages, meetups, and event signups are not available yet.'
+                    : 'Books you saved in this browser session.'}
+            </p>}
             {panel !== 'profile' && panel !== 'community' && <div className="panel-books">
               {(panel === 'bag' ? bag : saved).length ? (
                 (panel === 'bag' ? bag : saved).map((title, index) => {
-                  const book = books.find((item) => item.title === title);
+                  const book = books.find((item) => bookKey(item) === title);
+                  if (!book) return null;
                   return (
                     <article key={`${title}-${index}`}>
                       <img src={book.cover} alt="" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = book.coverFallback; }} />
                       <div>
                         <strong>{book.title}</strong>
-                        <span>{book.price} · sample listing</span>
+                        <span>{book.price}</span>
                       </div>
                       <button
                         onClick={() =>
@@ -407,26 +391,26 @@ export default function App() {
               ) : (
                 <p className="panel-empty">
                   {panel === 'bag'
-                    ? 'Your bag is empty. Browse the sample books to add one.'
-                    : 'No saved books yet. Tap a heart on a sample listing to keep it here.'}
+                    ? 'Your bag is empty. Browse the books to add one.'
+                    : 'No saved books yet. Tap a heart to keep a book here.'}
                 </p>
               )}
             </div>}
             {panel === 'profile' && (
-              <p className="panel-note">Wishlist and book bag items are temporary and stay in this browser session.</p>
+              <AccountPanel />
             )}
             {panel === 'bag' && (
-              <p className="panel-note">Checkout and delivery are not connected in this preview.</p>
+              <p className="panel-note">Checkout and delivery are not available yet.</p>
             )}
-            <button
+            {panel !== 'profile' && <button
               className="button button-red menu-cta"
               onClick={() => {
                 setPanel('');
                 browseAll();
               }}
             >
-              Browse sample books <ArrowRight size={16} />
-            </button>
+              Browse books <ArrowRight size={16} />
+            </button>}
           </section>
         </div>
       )}
@@ -458,17 +442,17 @@ export default function App() {
                 <em>NEW BEGINNINGS.</em>
               </h1>
               <p>
-                Find a story that stays with you. Save a favourite or add a sample listing to your
+                Find a story that stays with you. Save a favourite or add a book to your
                 bag. Every book deserves another chapter.
               </p>
               <div className="hero-buttons">
                 <button className="button button-wheat" onClick={browseAll}>
-                  BROWSE SAMPLE BOOKS <ArrowUpRight size={16} />
+                  BROWSE BOOKS <ArrowUpRight size={16} />
                 </button>
               </div>
             </div>
           </div>
-          <a className="hero-down" href="#shelf" aria-label="Scroll to sample books">
+          <a className="hero-down" href="#shelf" aria-label="Scroll to books">
             <ArrowDown size={17} />
           </a>
           <span className="hero-caption">A quiet corner. A whole new world.</span>
@@ -487,10 +471,10 @@ export default function App() {
                 <br />
                 <em>NEXT CHAPTER.</em>
               </h2>
-              <p>Browse a small collection of sample reader listings.</p>
+              <p>Find a story worth sharing.</p>
             </div>
             <button className="text-link" onClick={browseAll}>
-              EXPLORE ALL {books.length} SAMPLE BOOKS <ArrowRight size={16} />
+              BROWSE ALL LISTINGS <ArrowRight size={16} />
             </button>
           </div>
           <div className="shelf-toolbar">
@@ -499,7 +483,7 @@ export default function App() {
                 {normalizedSearch
                   ? 'SEARCH RESULTS'
                   : showAll
-                    ? 'ALL SAMPLE BOOKS'
+                    ? 'ALL BOOKS'
                     : 'A FEW GOOD FINDS'}
               </strong>
               <span>
@@ -528,30 +512,27 @@ export default function App() {
             ref={track}
             onScroll={updateCarousel}
             aria-live="polite"
-            aria-label="Sample book listings"
+            aria-label="Book listings"
           >
             {shown.length ? (
               shown.map((book, index) => (
                 <BookCard
-                  key={book.title}
+                  key={bookKey(book)}
                   book={book}
                   index={index}
-                  saved={saved.includes(book.title)}
-                  inBag={bag.includes(book.title)}
-                  onSave={() => toggleSaved(book.title)}
-                  onAdd={() => addBook(book.title)}
                 />
               ))
             ) : (
               <p className="empty-shelf">
-                No sample books match your search.{' '}
+                No books match your search.{' '}
                 <button onClick={browseAll}>Show all books</button>
               </p>
             )}
           </div>
+          {listingError && <p className="listing-load-error" role="status">{listingError}</p>}
           <div className="shelf-foot">
-            <span>SAMPLE LISTINGS · NO CHECKOUT</span>
-            <span>Bag and saved book changes last for this page session.</span>
+            <span>SHELF MAY INCLUDE EXAMPLE BOOKS · CHECKOUT UNAVAILABLE</span>
+            <span>Bag and saved books last for this browser session.</span>
           </div>
         </section>
 
@@ -571,7 +552,7 @@ export default function App() {
               <br />
               <em>QUESTIONS.</em>
             </h2>
-            <p>This is a frontend preview with illustrative listings.</p>
+            <p>A little more about BetterReads.</p>
             <BookOpen size={27} className="faq-book" />
           </div>
           <div className="faq-list">
@@ -603,14 +584,14 @@ export default function App() {
               Good books deserve another chapter.
               <br />
               <button onClick={browseAll}>
-                Browse sample books <ArrowUpRight size={14} />
+                Browse books <ArrowUpRight size={14} />
               </button>
             </p>
           </div>
           <nav className="footer-links" aria-label="Browse BetterReads">
             <span className="eyebrow pale">FIND YOUR WAY</span>
-            <a href="#shelf" onClick={browseAll}>
-              All sample books
+            <a href="/books">
+              All books
             </a>
             <a href="#faq">Questions</a>
           </nav>
@@ -624,7 +605,7 @@ export default function App() {
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© {new Date().getFullYear()} BetterReads · Sample frontend preview.</span>
+          <span>© {new Date().getFullYear()} BetterReads.</span>
           <span>READ WELL. PASS IT ON.</span>
         </div>
       </footer>
@@ -635,5 +616,8 @@ export default function App() {
     </div>
   );
 }
+
+
+
 
 
