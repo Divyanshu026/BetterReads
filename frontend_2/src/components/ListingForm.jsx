@@ -1,13 +1,13 @@
 import { useState } from 'react';
+import { getToken } from '../services/auth.js';
 
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-const tokenKey = 'betterreads.authToken';
 
 export default function ListingForm({ photos, onBusyChange, onCreated, onSignIn }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sessionExpired, setSessionExpired] = useState(false);
-  const token = localStorage.getItem(tokenKey) || sessionStorage.getItem(tokenKey);
+  const token = getToken();
 
   async function submit(event) {
     event.preventDefault();

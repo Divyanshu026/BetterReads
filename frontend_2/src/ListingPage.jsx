@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Camera, X } from 'lucide-react';
 import AccountPanel from './components/AccountPanel.jsx';
 import ListingForm from './components/ListingForm.jsx';
-import InboxLink from './components/InboxLink.jsx';
+import Navbar from './components/Navbar.jsx';
 
 export default function ListingPage() {
   const [signingIn, setSigningIn] = useState(false);
@@ -41,13 +41,7 @@ export default function ListingPage() {
 
   return (
     <div className="listing-page">
-      <header className="listing-page-header">
-        <a className="brand" href="/" aria-label="BetterReads home">
-          <img className="brand-icon" src="/betterreads-reader.png" alt="" />
-          <span className="brand-name">BETTERREADS<small>BOOKS · NEW BEGINNINGS</small></span>
-        </a>
-        <div className="subpage-nav"><InboxLink /><a className="listing-back" href="/books"><ArrowLeft size={17} aria-hidden="true" /> Back to books</a></div>
-      </header>
+      <Navbar />
       <main className="listing-page-main">
         <div className="listing-page-intro">
           <span className="eyebrow">FROM ONE READER TO ANOTHER</span>

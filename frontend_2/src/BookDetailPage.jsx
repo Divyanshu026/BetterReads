@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
 import WishlistButton from './components/WishlistButton.jsx';
 import ExchangeRequestModal from './components/ExchangeRequestModal.jsx';
-import InboxLink from './components/InboxLink.jsx';
+import Navbar from './components/Navbar.jsx';
 import AccountPanel from './components/AccountPanel.jsx';
+import { getToken } from './services/auth.js';
 import { exampleBooks } from './exampleBooks.js';
 
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-const getToken = () => localStorage.getItem('betterreads.authToken') || sessionStorage.getItem('betterreads.authToken');
+
 const photoUrl = (url) => url.startsWith('/uploads/') ? apiBase + url : url;
 
 async function request(path, options = {}) {
@@ -87,10 +88,7 @@ export default function BookDetailPage({ id, exampleTitle }) {
 
   return (
     <div className="book-detail-page">
-      <header className="listing-page-header">
-        <a className="brand" href="/" aria-label="BetterReads home"><img className="brand-icon" src="/betterreads-reader.png" alt="" /><span className="brand-name">BETTERREADS<small>BOOKS · NEW BEGINNINGS</small></span></a>
-        <div className="subpage-nav"><InboxLink /><a className="listing-back" href="/books"><ArrowLeft size={17} aria-hidden="true" /> Back to books</a></div>
-      </header>
+      <Navbar />
       <main className="book-detail-main">
         {loading ? <p role="status">Loading book details…</p> : error ? <p role="alert">{error}</p> : book && (
           <div className="book-detail-layout">

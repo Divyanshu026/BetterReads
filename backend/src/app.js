@@ -48,6 +48,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // Mount REST API routes
 app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), authRoutes);
+app.use('/api/community', require('./routes/community'));
 app.use('/api/users', usersRoutes);
 app.use('/api/books', booksRoutes);
 app.use('/api/offers', offersRoutes);

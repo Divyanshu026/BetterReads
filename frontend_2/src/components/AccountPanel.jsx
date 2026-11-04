@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import MessageInbox from './MessageInbox.jsx';
+import { getToken, setToken, clearToken } from '../services/auth.js';
 
-const tokenKey = 'betterreads.authToken';
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-const getToken = () => localStorage.getItem(tokenKey) || sessionStorage.getItem(tokenKey);
-const clearToken = () => { localStorage.removeItem(tokenKey); sessionStorage.removeItem(tokenKey); };
 
 async function readAccountResponse(response) {
+  if (response.status === 429) throw new Error('Too many requests. Please wait a few minutes and try again.');
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.toLowerCase().includes('application/json')) {
-    throw new Error('The account server could not be reached. Check that the backend is running and restart the frontend server.');
+    throw new Error('The account server is unavailable. Check that the backend is running, then try again.');
   }
   let data;
   try {
@@ -43,7 +42,7 @@ export default function AccountPanel({ onAuthenticated }) {
     })
       .then(async (response) => {
         if (response.status === 401) {
-          clearToken();
+          clearToken(token);
           throw new Error('Your session has expired. Please log in again.');
         }
         const data = await readAccountResponse(response);
@@ -80,8 +79,7 @@ export default function AccountPanel({ onAuthenticated }) {
       if (typeof data.token !== 'string' || !data.user) {
         throw new Error('The account server returned an invalid response. Please try again.');
       }
-      clearToken();
-      (form.has('remember') ? localStorage : sessionStorage).setItem(tokenKey, data.token);
+      setToken(data.token, form.has('remember'));
       setUser(data.user);
       onAuthenticated?.();
     } catch (err) {

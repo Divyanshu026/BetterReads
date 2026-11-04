@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import BookCard from './components/BookCard.jsx';
 import AccountPanel from './components/AccountPanel.jsx';
-import InboxLink from './components/InboxLink.jsx';
+import Navbar from './components/Navbar.jsx';
 import { exampleBooks } from './exampleBooks.js';
 import {
   ArrowDown,
@@ -30,6 +30,9 @@ const mapListing = (book) => ({
   author: book.author || 'Unknown author',
   genre: book.genre || 'General',
   state: book.condition,
+  location: book.location?.city,
+  barterAvailable: book.barterAvailable,
+  borrowAvailable: book.borrowAvailable,
   price: `₹${(book.priceCents / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`,
   cover: book.photos?.[0] ? listingPhoto(book.photos[0]) : '/covers/placeholder.svg',
   photos: (book.photos || []).map(listingPhoto),
@@ -230,97 +233,7 @@ export default function App() {
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      <header className={`site-header ${headerHidden ? 'header-hidden' : ''}`}>
-        <Brand />
-        <nav className="desktop-nav" aria-label="Main navigation">
-          <a href="#top">Home</a>
-          <a href="/books">Browse books</a>
-          <a href="/list-book">List a book</a>
-          <a href="/community">Community</a>
-        </nav>
-        <form className="header-search" role="search" onSubmit={submitSearch}>
-          <Search size={19} aria-hidden="true" />
-          <label className="visually-hidden" htmlFor="header-book-search">
-            Search books, authors, and genres
-          </label>
-          <input
-            id="header-book-search"
-            type="search"
-            placeholder="Search books, authors..."
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-        </form>
-        <div className="header-actions">
-          <InboxLink />
-          <a className="header-icon-button wishlist-link" href="/wishlist" aria-label="Open wishlist" title="Wishlist"><Heart size={19} aria-hidden="true" /></a>
-          <button
-            className="header-icon-button profile-link"
-            onClick={() => window.location.assign('/readers/me')}
-            aria-label="Open reader profile"
-            title="Profile"
-          >
-            <UserRound size={19} aria-hidden="true" />
-          </button>
-          <button
-            className="menu-trigger"
-            onClick={() => setMenu(true)}
-            aria-label="Open navigation menu"
-          >
-            <Menu size={22} />
-          </button>
-        </div>
-      </header>
-
-      {menu && (
-        <div
-          className="menu-backdrop"
-          onMouseDown={(event) => event.target === event.currentTarget && setMenu(false)}
-        >
-          <section
-            className="menu-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="menu-title"
-          >
-            <button
-              className="menu-close"
-              onClick={() => setMenu(false)}
-              aria-label="Close navigation menu"
-            >
-              <X size={22} />
-            </button>
-            <span className="eyebrow">A GOOD PLACE TO BEGIN</span>
-            <h2 id="menu-title">Explore BetterReads</h2>
-            <p>Find your next read and keep track of the books you love.</p>
-            <nav aria-label="Mobile navigation">
-              {nav.map(([label, href, action]) => (
-                <a
-                  href={href}
-                  key={label}
-                  onClick={(event) => {
-                    if (action) event.preventDefault();
-                    setMenu(false);
-                    action?.();
-                  }}
-                >
-                  {label}
-                  <ArrowRight size={18} aria-hidden="true" />
-                </a>
-              ))}
-            </nav>
-            <button
-              className="button button-red menu-cta"
-              onClick={() => {
-                setMenu(false);
-                window.location.assign('/wishlist');
-              }}
-            >
-              View wishlist <Heart size={16} aria-hidden="true" />
-            </button>
-          </section>
-        </div>
-      )}
+      <Navbar />
 
       {panel && (
         <div

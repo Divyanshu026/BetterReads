@@ -1,12 +1,14 @@
 export const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-export const getToken = () => localStorage.getItem('betterreads.authToken') || sessionStorage.getItem('betterreads.authToken');
+import { getToken } from './auth.js';
+export { getToken } from './auth.js';
 export const photoUrl = (url) => url?.startsWith('/uploads/') ? apiBase + url : url;
 export async function api(path, options = {}) {
   const token = getToken();
   const response = await fetch(`${apiBase}${path}`, { ...options, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers } });
+  if (response.status === 429) { const error = new Error('Too many requests. Please wait a few minutes and try again.'); error.status = 429; throw error; }
   if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Unable to reach the server. Please try again.');
   const data = await response.json();
-  if (!response.ok) throw new Error(data?.error?.message || 'Unable to complete this request.');
+  if (!response.ok) { const error = new Error(data?.error?.message || 'Unable to complete this request.'); error.status = response.status; throw error; }
   return data;
 }
 export async function getAllBooks(query = '', signal) {
@@ -23,3 +25,13 @@ export async function getAllBooks(query = '', signal) {
 }
 export function localGet(key, fallback) { try { const value = localStorage.getItem(key); return value ? JSON.parse(value) : fallback; } catch { return fallback; } }
 export function localSet(key, value) { localStorage.setItem(key, JSON.stringify(value)); window.dispatchEvent(new Event('betterreads:local-change')); }
+
+const accountRequests = new Map();
+export function getCurrentUser() {
+  const token = getToken();
+  if (!accountRequests.has(token)) {
+    const request = api('/api/auth/me').finally(() => accountRequests.delete(token));
+    accountRequests.set(token, request);
+  }
+  return accountRequests.get(token);
+}

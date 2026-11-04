@@ -1,0 +1,34 @@
+process.env.JWT_SECRET = 'test-only-secret-at-least-32-characters';
+const request = require('supertest');
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const { MongoMemoryServer } = require('mongodb-memory-server');
+const app = require('../src/app');
+const User = require('../src/models/User');
+let database, first, second;
+beforeAll(async () => {
+  database = await MongoMemoryServer.create({ binary: { version: '7.0.24' } });
+  await mongoose.connect(database.getUri());
+  first = await User.create({ name: 'First reader', email: 'first@example.invalid' });
+  second = await User.create({ name: 'Second reader', email: 'second@example.invalid' });
+});
+afterAll(async () => { await mongoose.disconnect(); if (database) await database.stop(); });
+const token = (user) => `Bearer ${jwt.sign({ userId: String(user._id) }, process.env.JWT_SECRET)}`;
+test('readers share discussions and replies with authenticated writes', async () => {
+  const post = { title: 'A favourite book', body: 'What are you reading?', category: 'General Discussion' };
+  expect((await request(app).post('/api/community/posts').send(post)).status).toBe(401);
+  expect((await request(app).post('/api/community/posts').set('Authorization', token(first)).send({ ...post, body: ' ' })).status).toBe(400);
+  const created = await request(app).post('/api/community/posts').set('Authorization', token(first)).send(post);
+  expect(created.status).toBe(201);
+  const id = created.body._id;
+  const feed = await request(app).get('/api/community/posts');
+  expect(feed.body.posts[0].title).toBe(post.title);
+  const reply = await request(app).post(`/api/community/posts/${id}/comments`).set('Authorization', token(second)).send({ body: 'A good classic.' });
+  expect(reply.status).toBe(201);
+  const comments = await request(app).get(`/api/community/posts/${id}/comments`);
+  expect(comments.body.comments[0].body).toBe('A good classic.');
+  const liked = await request(app).put(`/api/community/posts/${id}/like`).set('Authorization', token(second)).send({ liked: true });
+  expect(liked.body).toEqual({ likes: 1, liked: true });
+  const unliked = await request(app).put(`/api/community/posts/${id}/like`).set('Authorization', token(second)).send({ liked: false });
+  expect(unliked.body).toEqual({ likes: 0, liked: false });
+});
