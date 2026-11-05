@@ -1,4 +1,5 @@
 import './styles.css';
+import { appPath, currentPath } from './services/paths.js';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
@@ -6,16 +7,15 @@ import ListingPage from './ListingPage.jsx';
 import BookDetailPage from './BookDetailPage.jsx';
 import CatalogPage from './CatalogPage.jsx';
 import WishlistPage from './WishlistPage.jsx';
-import InboxPage from './InboxPage.jsx';
 import CommunityPage from './CommunityPage.jsx';
 import ReaderProfilePage from './ReaderProfilePage.jsx';
 
-const path = window.location.pathname.replace(/\/$/, '');
+const path = currentPath().replace(/\/$/, '');
 let page = <App />;
 if (path === '/list-book') page = <ListingPage />;
 else if (path === '/books') page = <CatalogPage />;
 else if (path === '/wishlist') page = <WishlistPage />;
-else if (path === '/inbox') page = <InboxPage />;
+else if (path === '/inbox') { const params = new URLSearchParams(window.location.search); params.set('openInbox', '1'); window.location.replace(`${appPath('/')}?${params}`); }
 else if (path === '/community') page = <CommunityPage />;
 else if (path === '/readers/me') page = <ReaderProfilePage mine />;
 else if (/^\/readers\/[a-f\d]{24}$/i.test(path)) page = <ReaderProfilePage readerId={path.slice('/readers/'.length)} />;

@@ -5,7 +5,7 @@ const other = '222222222222222222222222';
 const target = 'aaaaaaaaaaaaaaaaaaaaaaaa';
 const own = 'bbbbbbbbbbbbbbbbbbbbbbbb';
 const chatId = 'cccccccccccccccccccccccc';
-const makeBook = (id, title, owner, city, genre) => ({ _id: id, title, author: id === own ? 'Local Author' : 'Franz Kafka', genre, condition: 'Used', status: 'available', barterAvailable: true, priceCents: 0, location: { city }, description: 'A reader listing', photos: [], ownerId: { _id: owner, name: owner === me ? 'Test Reader' : 'Book Owner' }, createdAt: '2026-01-01T00:00:00Z' });
+const makeBook = (id, title, owner, city, genre) => ({ _id: id, title, author: id === own ? 'Local Author' : 'Franz Kafka', genre, condition: 'Used', status: 'available', barterAvailable: true, borrowAvailable: true, priceCents: 0, location: { city }, description: 'A reader listing', photos: [], ownerId: { _id: owner, name: owner === me ? 'Test Reader' : 'Book Owner' }, createdAt: '2026-01-01T00:00:00Z' });
 
 async function setup(page) {
   const state = { books: [makeBook(target, 'Metamorphosis', other, 'Pune', 'Fantasy'), makeBook(own, 'My Book', me, 'Delhi', 'History')], offers: [], wishlist: [], chats: [], messages: [], posts: [], comments: [] };
@@ -23,7 +23,7 @@ async function setup(page) {
     if (path.startsWith('/api/books/')) { const id = path.split('/').pop(); const book = state.books.find((b) => b._id === id); if (method === 'PATCH') { Object.assign(book, body); return json(book); } if (method === 'DELETE') { state.books = state.books.filter((b) => b._id !== id); return json({ success: true }); } return book ? json(book) : json({ error: { message: 'Not found' } }, 404); }
     if (path === '/api/upload') return json({ url: '/covers/placeholder.svg', publicId: 'test/photo' });
     if (path === '/api/offers' && method === 'GET') return json(state.offers);
-    if (path === '/api/offers' && method === 'POST') { const offer = { _id: 'eeeeeeeeeeeeeeeeeeeeeeee', listingId: { _id: target, title: 'Metamorphosis', ownerId: other }, proposerId: { _id: me, name: 'Test Reader' }, offeredBookIds: [{ _id: own, title: 'My Book' }], status: 'pending', type: 'barter' }; state.offers.push(offer); return json(offer, 201); }
+    if (path === '/api/offers' && method === 'POST') { const offer = { _id: 'eeeeeeeeeeeeeeeeeeeeeeee', listingId: { _id: target, title: 'Metamorphosis', ownerId: other }, proposerId: { _id: me, name: 'Test Reader' }, offeredBookIds: [{ _id: own, title: 'My Book' }], status: 'pending', type: body.type }; state.offers.push(offer); return json(offer, 201); }
     if (path.startsWith('/api/offers/') && method === 'PATCH') { const offer = state.offers.find((o) => o._id === path.split('/').pop()); offer.status = body.status; return json(offer); }
     if (path.startsWith('/api/offers/') && method === 'DELETE') { const offer = state.offers.find((o) => o._id === path.split('/').pop()); offer.status = 'cancelled'; return json({ success: true }); }
     if (path.startsWith('/api/wishlist/check/')) return json({ inWishlist: state.wishlist.includes(path.split('/').pop()) });
@@ -49,11 +49,11 @@ test('wishlist persists across details and wishlist page', async ({ page }) => {
 });
 
 test('exchange request appears as pending in sent requests', async ({ page }) => {
-  await setup(page); await page.goto(`/books/${target}`); await page.getByRole('button', { name: 'Ask for exchange' }).click(); await page.getByLabel('Offer one of your available books').selectOption(own); await page.getByRole('button', { name: 'Submit request' }).click(); await expect(page.getByText('Exchange request sent.')).toBeVisible(); await page.getByRole('link', { name: 'View requests' }).click(); await expect(page.getByText('pending', { exact: true })).toBeVisible(); await expect(page.getByText(/Offered: My Book/)).toBeVisible();
+  await setup(page); await page.goto(`/books/${target}`); await page.getByRole('button', { name: 'Ask for exchange' }).click(); await page.getByLabel('Offer one of your available books').selectOption(own); await page.getByRole('button', { name: 'Submit request' }).click(); await expect(page.getByText('Request sent.')).toBeVisible(); await page.getByRole('button', { name: 'View requests' }).click(); await expect(page.getByText('pending', { exact: true })).toBeVisible(); await expect(page.getByText(/Offered: My Book/)).toBeVisible();
 });
 
 test('message lister opens book context and sends a message', async ({ page }) => {
-  await setup(page); await page.goto(`/books/${target}`); await page.getByRole('button', { name: 'Message lister' }).click(); await expect(page).toHaveURL(/\/inbox\?chat=/); await expect(page.getByText('Discussing')).toBeVisible(); await page.getByLabel('Your message').fill('Can we exchange this book?'); await page.getByRole('button', { name: 'Send message' }).click(); await expect(page.getByLabel('Message history').getByText('Can we exchange this book?')).toBeVisible();
+  await setup(page); await page.goto(`/books/${target}`); await page.getByRole('button', { name: 'Message lister' }).click(); await expect(page.getByRole('dialog', { name: 'Your inbox' })).toBeVisible(); await expect(page.getByText('Discussing')).toBeVisible(); await page.getByLabel('Your message').fill('Can we exchange this book?'); await page.getByRole('button', { name: 'Send message' }).click(); await expect(page.getByLabel('Message history').getByText('Can we exchange this book?')).toBeVisible();
 });
 
 test('shared community allows posting, replying and liking', async ({ page }) => {
@@ -93,7 +93,7 @@ test('shared navigation and catalog location work on mobile', async ({ page }) =
   await page.goto('/books');
   await page.getByRole('button', { name: 'Open navigation menu' }).click();
   await expect(page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('link', { name: 'Browse books' })).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByRole('button', { name: /Messages/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Messages, .* unread/ })).toBeVisible();
   await page.getByRole('button', { name: 'Close navigation menu' }).click();
   await page.getByRole('button', { name: 'All locations' }).click();
   await page.locator('#catalog-location').getByLabel('City or area').fill('Pune');
@@ -149,4 +149,27 @@ test('profile tabs default correctly and preserve explicitly selected URL tabs',
   await expect(page).toHaveURL(/tab=about/);
   await page.reload();
   await expect(page.getByRole('button', { name: 'About', exact: true })).toHaveAttribute('aria-current', 'page');
+});
+
+
+test('a reader can submit a borrow request without offering another book', async ({ page }) => {
+  const state = await setup(page);
+  await page.goto(`/books/${target}`);
+  await page.getByRole('button', { name: 'Ask for exchange or borrow' }).click();
+  await page.getByLabel('Request type').selectOption('borrow');
+  await expect(page.getByLabel('Offer one of your available books')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Submit request' }).click();
+  await expect(page.getByText('Request sent.')).toBeVisible();
+  expect(state.offers[0].type).toBe('borrow');
+});
+
+test('a listing with no sharing preferences explains how to contact its owner', async ({ page }) => {
+  const state = await setup(page);
+  state.books[0].barterAvailable = false;
+  state.books[0].borrowAvailable = false;
+  await page.goto(`/books/${target}`);
+  await page.getByRole('button', { name: 'Ask for exchange or borrow' }).click();
+  await expect(page.getByText('The owner has not offered this book for exchange or borrowing yet.')).toBeVisible();
+  await page.getByRole('button', { name: 'Message the lister' }).click();
+  await expect(page.getByRole('dialog', { name: 'Your inbox' })).toBeVisible();
 });

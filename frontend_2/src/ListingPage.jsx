@@ -1,3 +1,4 @@
+import { appPath } from './services/paths.js';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Camera, X } from 'lucide-react';
 import AccountPanel from './components/AccountPanel.jsx';
@@ -59,7 +60,7 @@ export default function ListingPage() {
           ) : (
             <ListingForm photos={photos} onBusyChange={setUploading} onSignIn={() => setSigningIn(true)} onCreated={() => {
               sessionStorage.setItem('betterreads.listingCreated', '1');
-              window.location.assign('/books');
+              window.location.assign(appPath('/books'));
             }} />
           )}
         </section>

@@ -10,6 +10,7 @@ const fields = [
   'photos',
   'priceCents',
   'barterAvailable',
+  'borrowAvailable',
 ];
 const data = (body) => ({
   ...pick(body, fields),

@@ -1,3 +1,4 @@
+import { appPath } from './services/paths.js';
 export const exampleBooks = [
   {
     title: 'The Midnight Library',
@@ -7,7 +8,7 @@ export const exampleBooks = [
     state: 'Like new',
     cover: 'https://covers.openlibrary.org/b/isbn/9780525559474-L.jpg?default=false',
     illustrative: true,
-    coverFallback: '/covers/midnight.svg',
+    coverFallback: appPath('/covers/midnight.svg'),
     note: 'A second chance, between the shelves',
   },
   {
@@ -18,7 +19,7 @@ export const exampleBooks = [
     state: 'Loved well',
     cover: 'https://covers.openlibrary.org/b/isbn/9781464301971-L.jpg?default=false',
     illustrative: true,
-    coverFallback: '/covers/garden.svg',
+    coverFallback: appPath('/covers/garden.svg'),
     note: 'A classic ready for a new reader',
   },
   {
@@ -29,7 +30,7 @@ export const exampleBooks = [
     state: 'Very good',
     cover: 'https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg?default=false',
     illustrative: true,
-    coverFallback: '/covers/atomic.svg',
+    coverFallback: appPath('/covers/atomic.svg'),
     note: 'Small changes, remarkable results',
   },
   {
@@ -40,7 +41,7 @@ export const exampleBooks = [
     state: 'Like new',
     cover: 'https://covers.openlibrary.org/b/isbn/9780192815033-L.jpg?default=false',
     illustrative: true,
-    coverFallback: '/covers/pride.svg',
+    coverFallback: appPath('/covers/pride.svg'),
     note: 'A little wit never goes out of style',
   },
   {
@@ -51,7 +52,7 @@ export const exampleBooks = [
     state: 'Very good',
     cover: 'https://covers.openlibrary.org/b/isbn/9780547928227-L.jpg?default=false',
     illustrative: true,
-    coverFallback: '/covers/hobbit.svg',
+    coverFallback: appPath('/covers/hobbit.svg'),
     note: 'An unexpected journey awaits',
   },
   {
@@ -62,7 +63,7 @@ export const exampleBooks = [
     state: 'Very good',
     cover: 'https://covers.openlibrary.org/b/isbn/9780140439072-L.jpg?default=false',
     illustrative: true,
-    coverFallback: '/covers/sherlock.svg',
+    coverFallback: appPath('/covers/sherlock.svg'),
     note: 'A clever mystery for a rainy day',
   },
 ];

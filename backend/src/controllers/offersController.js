@@ -8,7 +8,8 @@ exports.createOffer = wrap(async (req, res) => {
   if (!book || book.status !== 'available') fail(409, 'Listing is not available');
   if (String(book.ownerId) === req.user.userId)
     fail(400, 'Cannot make an offer on your own listing');
-  if (!['purchase', 'barter'].includes(type)) fail(400, 'Invalid offer type');
+  if (!['purchase', 'barter', 'borrow'].includes(type)) fail(400, 'Invalid offer type');
+  if (type === 'borrow' && !book.borrowAvailable) fail(400, 'This book is not offered for borrowing');
   if (type === 'purchase' && (!Number.isInteger(amountCents) || amountCents < 100))
     fail(400, 'Offer at least ₹1');
   if (type === 'barter') {
@@ -131,4 +132,20 @@ exports.cancelOffer = wrap(async (req, res) => {
     await session.endSession();
   }
   res.json({ success: true });
+});
+
+exports.returnBorrow = wrap(async (req, res) => {
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const offer = await Offer.findById(req.params.id).session(session);
+      if (!offer || offer.type !== 'borrow' || offer.status !== 'accepted') fail(409, 'This borrow request is not active');
+      const book = await Book.findById(offer.listingId).session(session);
+      if (!book || String(book.ownerId) !== req.user.userId) fail(403, 'Only the owner can confirm a return');
+      if (book.status !== 'reserved' || book.reservationId !== String(offer._id)) fail(409, 'This book is no longer reserved for this request');
+      book.status = 'available'; book.reservationId = undefined; await book.save({ session });
+      offer.status = 'returned'; await offer.save({ session });
+    });
+  } finally { await session.endSession(); }
+  res.json(await populate(Offer.findById(req.params.id)));
 });

@@ -9,7 +9,7 @@ const OfferSchema = new mongoose.Schema(
     // User who made the offer
     proposerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     // Offer type: direct purchase or barter (exchange of items)
-    type: { type: String, enum: ['purchase', 'barter'], required: true },
+    type: { type: String, enum: ['purchase', 'barter', 'borrow'], required: true },
     // If barter, the books offered in exchange
     offeredBookIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Book' }],
     // If purchase, the monetary amount offered (in cents)
@@ -17,7 +17,7 @@ const OfferSchema = new mongoose.Schema(
     // Current status of the offer
     status: {
       type: String,
-      enum: ['pending', 'accepted', 'declined', 'cancelled'],
+      enum: ['pending', 'accepted', 'declined', 'cancelled', 'returned'],
       default: 'pending',
     },
     // Whether payment has been completed (for purchase offers)

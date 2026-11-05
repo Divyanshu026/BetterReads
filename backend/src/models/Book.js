@@ -31,6 +31,7 @@ const BookSchema = new mongoose.Schema(
     reservationId: { type: String, index: true },
     // Whether barter/exchange is possible for this listing
     barterAvailable: { type: Boolean, default: false },
+    borrowAvailable: { type: Boolean, default: false },
     // Location info (for city-based filtering)
     location: { city: { type: String } },
     // Availability status in marketplace

@@ -25,6 +25,7 @@ export default function ListingForm({ photos, onBusyChange, onCreated, onSignIn 
       priceCents: 0,
       photos: [],
       barterAvailable: form.has('barter'),
+      borrowAvailable: form.has('borrow'),
     };
     if (!payload.title) { setError('Enter a book title.'); return; }
     setBusy(true);
@@ -98,7 +99,7 @@ export default function ListingForm({ photos, onBusyChange, onCreated, onSignIn 
       <label>Description<textarea name="description" maxLength={2700} rows={3} required /></label>
       <label className="account-remember"><input name="barter" type="checkbox" defaultChecked /> Available for exchange</label>
       <label>Books you would like in return (optional)<input name="interests" maxLength={250} /></label>
-      <p className="detail-note">Borrowing and meetup availability are not supported yet. You can discuss arrangements in chat.</p>
+      <label className="account-remember"><input type="checkbox" name="borrow" /> Available to borrow</label>
       {error && <p className="account-error" role="alert">{error}</p>}
       {sessionExpired && <button type="button" className="text-link" onClick={onSignIn}>Log in again</button>}
       <button className="button button-red account-submit" type="submit" disabled={busy}>{busy ? 'Listing book…' : 'List book'}</button>

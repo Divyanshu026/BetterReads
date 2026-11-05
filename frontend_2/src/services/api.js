@@ -1,7 +1,8 @@
 export const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 import { getToken } from './auth.js';
+import { appPath } from './paths.js';
 export { getToken } from './auth.js';
-export const photoUrl = (url) => url?.startsWith('/uploads/') ? apiBase + url : url;
+export const photoUrl = (url) => url?.startsWith('/uploads/') ? apiBase + url : url?.startsWith('/covers/') ? appPath(url) : url;
 export async function api(path, options = {}) {
   const token = getToken();
   const response = await fetch(`${apiBase}${path}`, { ...options, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers } });

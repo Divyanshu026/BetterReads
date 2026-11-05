@@ -7,6 +7,7 @@ const {
   getOffer,
   updateOfferStatus,
   cancelOffer,
+  returnBorrow,
 } = require('../controllers/offersController');
 const { requireAuth } = require('../middleware/auth');
 
@@ -18,6 +19,8 @@ router.get('/', listOffers);
 
 // POST /api/offers — create a new offer
 router.post('/', createOffer);
+
+router.patch('/:id/return', returnBorrow);
 
 // GET /api/offers/:id — get a single offer
 router.get('/:id', getOffer);

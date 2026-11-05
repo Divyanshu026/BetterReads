@@ -4,7 +4,7 @@ process.env.STRIPE_WEBHOOK_SECRET = 'whsec_local_testing_only';
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryReplSet } = require('mongodb-memory-server');
-const { io: client } = require('../../frontend/node_modules/socket.io-client');
+const { io: client } = require('socket.io-client');
 const http = require('http');
 const app = require('../src/app');
 const { stripe } = require('../src/services/stripe');
@@ -522,4 +522,31 @@ test('valid image uploads stay in the authenticated namespace and can be deleted
     ).status,
   ).toBe(200);
   expect((await request(app).get(r.body.url)).status).toBe(404);
+});
+
+test('listing details, suggestions, edits and deletion respect ownership', async () => {
+  const listing = await book(seller, { title: 'A distinctive novel', author: 'A Writer' });
+  const details = await request(app).get(`/api/books/${listing._id}`);
+  expect(details.status).toBe(200);
+  expect(details.body.title).toBe('A distinctive novel');
+  const suggestions = await request(app).get('/api/books/suggest').query({ q: 'distinctive' });
+  expect(suggestions.body.some((item) => item.value === 'A distinctive novel')).toBe(true);
+  expect((await request(app).patch(`/api/books/${listing._id}`).set(auth(stranger)).send({ title: 'Taken' })).status).toBe(409);
+  expect((await request(app).patch(`/api/books/${listing._id}`).set(auth(seller)).send({ title: 'Revised novel' })).body.title).toBe('Revised novel');
+  expect((await request(app).delete(`/api/books/${listing._id}`).set(auth(stranger))).status).toBe(409);
+  expect((await request(app).delete(`/api/books/${listing._id}`).set(auth(seller))).status).toBe(200);
+  expect((await request(app).get(`/api/books/${listing._id}`)).status).toBe(404);
+});
+
+test('borrow requests reserve a permitted book and only its owner can confirm return', async () => {
+  const listing = await book(seller, { title: 'A book to lend', borrowAvailable: true });
+  const requested = await request(app).post('/api/offers').set(auth(buyer)).send({ listingId: listing._id, type: 'borrow' });
+  expect(requested.status).toBe(201);
+  expect((await request(app).patch(`/api/offers/${requested.body._id}`).set(auth(seller)).send({ status: 'accepted' })).status).toBe(200);
+  expect((await Book.findById(listing._id)).status).toBe('reserved');
+  expect((await request(app).patch(`/api/offers/${requested.body._id}/return`).set(auth(stranger))).status).toBe(403);
+  expect((await request(app).patch(`/api/offers/${requested.body._id}/return`).set(auth(seller))).body.status).toBe('returned');
+  expect((await Book.findById(listing._id)).status).toBe('available');
+  const unavailable = await book(seller, { title: 'Exchange only', borrowAvailable: false });
+  expect((await request(app).post('/api/offers').set(auth(buyer)).send({ listingId: unavailable._id, type: 'borrow' })).status).toBe(400);
 });

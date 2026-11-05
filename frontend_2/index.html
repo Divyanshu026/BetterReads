@@ -9,7 +9,7 @@
       content="Discover books and find your next read with BetterReads."
     />
     <title>BetterReads — Good books. New beginnings.</title>
-    <link rel="icon" type="image/png" href="/betterreads-reader.png" />
+    <link rel="icon" type="image/png" href="%BASE_URL%betterreads-reader.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,6 +18,16 @@
     />
   </head>
   <body>
+    <script>
+      (function () {
+        var params = new URLSearchParams(location.search);
+        var route = params.get('__br_path');
+        if (route && route.charAt(0) === '/' && route.charAt(1) !== '/') {
+          var base = '%BASE_URL%'.replace(/\/$/, '');
+          history.replaceState(null, '', base + route);
+        }
+      }());
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

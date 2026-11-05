@@ -1,3 +1,4 @@
+import { appPath } from './services/paths.js';
 import { useEffect, useRef, useState } from 'react';
 import BookCard from './components/BookCard.jsx';
 import AccountPanel from './components/AccountPanel.jsx';
@@ -23,7 +24,7 @@ import {
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const readSessionList = (key) => { try { const data = JSON.parse(sessionStorage.getItem(key) || '[]'); return Array.isArray(data) ? data : []; } catch { return []; } };
 const bookKey = (book) => book.id || book.title;
-const listingPhoto = (url) => url.startsWith('/uploads/') ? apiBase + url : url;
+const listingPhoto = (url) => url.startsWith('/uploads/') ? apiBase + url : url.startsWith('/covers/') ? appPath(url) : url;
 const mapListing = (book) => ({
   id: book._id,
   title: book.title,
@@ -34,9 +35,9 @@ const mapListing = (book) => ({
   barterAvailable: book.barterAvailable,
   borrowAvailable: book.borrowAvailable,
   price: `₹${(book.priceCents / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`,
-  cover: book.photos?.[0] ? listingPhoto(book.photos[0]) : '/covers/placeholder.svg',
+  cover: book.photos?.[0] ? listingPhoto(book.photos[0]) : appPath('/covers/placeholder.svg'),
   photos: (book.photos || []).map(listingPhoto),
-  coverFallback: '/covers/placeholder.svg',
+  coverFallback: appPath('/covers/placeholder.svg'),
   note: book.description || 'A book ready for its next reader',
 });
 const questions = [
@@ -65,7 +66,7 @@ const questions = [
 function Brand({ light = false }) {
   return (
     <a className={`brand ${light ? 'light' : ''}`} href="#top" aria-label="BetterReads home">
-      <img className="brand-icon" src="/betterreads-reader.png" alt="" />
+      <img className="brand-icon" src={appPath('/betterreads-reader.png')} alt="" />
       <span className="brand-name">
         BETTERREADS<small>BOOKS · NEW BEGINNINGS</small>
       </span>
@@ -211,11 +212,11 @@ export default function App() {
       left: direction * Math.max(280, track.current.clientWidth * 0.8),
       behavior: 'smooth',
     });
-  const browseAll = () => window.location.assign('/books');
+  const browseAll = () => window.location.assign(appPath('/books'));
   const submitSearch = (event) => {
     event.preventDefault();
     const query = searchQuery.trim();
-    window.location.assign(query ? `/books?q=${encodeURIComponent(query)}` : '/books');
+    window.location.assign(appPath(query ? `/books?q=${encodeURIComponent(query)}` : '/books'));
   };
   const nav = [
     ['Home', '#top'],
@@ -310,11 +311,11 @@ export default function App() {
             loop
             playsInline
             preload="metadata"
-            poster="/hero-reader-3d.png"
+            poster={appPath('/hero-reader-3d.png')}
             aria-hidden="true"
             tabIndex={-1}
           >
-            <source src="/hero-reader.mp4" type="video/mp4" />
+            <source src={appPath('/hero-reader.mp4')} type="video/mp4" />
           </video>
           <div className="hero-copy">
 
@@ -424,7 +425,7 @@ export default function App() {
 
         <section className="reading-art" aria-label="A quote about reading">
           <img
-            src="/reading-quote-second.png"
+            src={appPath('/reading-quote-second.png')}
             alt="A reader relaxes with a book in a cozy library while a cat naps nearby, beside a quote about reading by Mason Cooley."
             loading="lazy"
           />
@@ -476,14 +477,14 @@ export default function App() {
           </div>
           <nav className="footer-links" aria-label="Browse BetterReads">
             <span className="eyebrow pale">FIND YOUR WAY</span>
-            <a href="/books">
+            <a href={appPath('/books')}>
               All books
             </a>
             <a href="#faq">Questions</a>
           </nav>
           <div className="footer-links">
             <span className="eyebrow pale">YOUR READING LIST</span>
-            <a href="/wishlist">Saved books</a>
+            <a href={appPath('/wishlist')}>Saved books</a>
             <a href="#top">
               Back to the top <ArrowUpRight size={14} />
             </a>

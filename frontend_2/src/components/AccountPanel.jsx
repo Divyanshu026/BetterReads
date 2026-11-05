@@ -1,3 +1,4 @@
+import { appPath } from '../services/paths.js';
 import { useEffect, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import MessageInbox from './MessageInbox.jsx';
@@ -97,8 +98,8 @@ export default function AccountPanel({ onAuthenticated }) {
         <p>Welcome, {user.name || 'reader'}.</p>
         <p className="account-email">{user.email}</p>
         <p className="panel-note">Your books, requests, and reading list are ready.</p>
-        <p><a className="detail-secondary" href="/readers/me">My profile &amp; listings</a> <a className="detail-secondary" href="/wishlist">Wishlist</a> <a className="detail-secondary" href="/inbox?tab=requests">Requests</a></p>
-        <button className="button button-red" type="button" onClick={() => setShowInbox(true)}>Messages</button>
+        <p><a className="detail-secondary" href={appPath('/readers/me')}>My profile &amp; listings</a> <a className="detail-secondary" href={appPath('/wishlist')}>Wishlist</a> <button className="detail-secondary" type="button" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } }))}>Requests</button></p>
+        <button className="button button-red" type="button" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'messages' } }))}>Messages</button>
         <button className="detail-secondary account-logout" type="button" onClick={() => {
           clearToken();
           setUser(null);
