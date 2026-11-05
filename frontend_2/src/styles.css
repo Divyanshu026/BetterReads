@@ -5684,3 +5684,12 @@ button:disabled {
 @media (max-width: 760px) { .reader-dashboard { grid-template-columns: 1fr; } .reader-dashboard .reader-profile-header { padding: 20px; } .reader-dashboard .reader-profile-identity { flex-direction: row; } .reader-dashboard-content { padding: 18px 20px 24px; } .reader-dashboard .reader-stats { grid-template-columns: 1fr; } .reader-dashboard .reader-stats > div { display: grid; padding: 10px 0; } .reader-dashboard .reader-stats strong { align-self: center; } }
 @media (max-width: 450px) { .reader-dashboard .reader-stats span, .reader-dashboard .reader-stats small { font-size: 12px; } .reader-dashboard .catalog-grid { grid-template-columns: 1fr; } }
 .shared-mobile-nav button { padding: 12px; border: 0; border-bottom: 1px solid #e5ddcf; background: transparent; color: #303b23; text-align: left; font: 600 14px 'DM Sans', sans-serif; cursor: pointer; }
+
+/* Profile dropdown in the shared navbar. */
+.profile-menu { position: relative; display: inline-flex; }
+.profile-menu::after { position: absolute; top: 100%; right: 0; width: 184px; height: 10px; content: ""; }
+.profile-menu-popover { position: absolute; z-index: 120; top: calc(100% + 8px); right: 0; display: grid; min-width: 184px; padding: 7px; border: 1px solid #ded5c7; border-radius: 10px; background: #faf6ed; box-shadow: 0 12px 28px rgb(48 59 35 / 16%); animation: profile-menu-in 140ms ease-out both; }
+.profile-menu-popover a, .profile-menu-popover button { display: block; width: 100%; padding: 10px 12px; border: 0; border-radius: 6px; background: transparent; color: #303b23; text-align: left; text-decoration: none; font: 600 14px 'DM Sans', sans-serif; cursor: pointer; }
+.profile-menu-popover a:hover, .profile-menu-popover button:hover, .profile-menu-popover a:focus-visible, .profile-menu-popover button:focus-visible { outline: none; background: #eee4d4; color: #8d2523; }
+@keyframes profile-menu-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .profile-menu-popover { animation: none; } }

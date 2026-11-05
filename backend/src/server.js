@@ -1,6 +1,3 @@
-const dns = require('node:dns');
-dns.setServers(['8.8.8.8', '1.1.1.1']);
-
 // Node's HTTP module (Socket.io attaches to the raw HTTP server)
 const http = require('http');
 // Express application instance (middleware + routes)

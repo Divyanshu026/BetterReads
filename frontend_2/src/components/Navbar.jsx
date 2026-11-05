@@ -4,10 +4,12 @@ import { Heart, Menu, UserRound, X } from 'lucide-react';
 import InboxLink from './InboxLink.jsx';
 import useReader from '../services/useReader.js';
 import { photoUrl } from '../services/api.js';
+import { clearToken } from '../services/auth.js';
 
 const links = [['Home', '/'], ['Browse books', '/books'], ['List a book', '/list-book'], ['Community', '/community']];
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const { user } = useReader();
   const navRef = useRef(null);
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
@@ -20,7 +22,7 @@ export default function Navbar() {
       else if (current > previous + 2) setHidden(true);
       previous = current;
     }
-    function onKeyDown(event) { if (event.key === 'Escape') setOpen(false); }
+    function onKeyDown(event) { if (event.key === 'Escape') { setOpen(false); setProfileOpen(false); } }
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('keydown', onKeyDown);
     return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('keydown', onKeyDown); };
@@ -43,7 +45,7 @@ export default function Navbar() {
   return <><div className="shared-navbar-spacer" aria-hidden="true" /><header className={`shared-navbar ${hidden ? 'shared-navbar-hidden' : ''}`}>
     <a className="brand" href={appPath('/')} aria-label="BetterReads home"><img className="brand-icon" src={appPath('/betterreads-reader.png')} alt="" /><span className="brand-name">BETTERREADS<small>BOOKS · NEW BEGINNINGS</small></span></a>
     <nav ref={navRef} className="shared-nav-links" aria-label="Main navigation" onMouseLeave={resetIndicator} onMouseOver={(event) => { const link = event.target.closest('a'); if (link) moveIndicator(link); }} onFocus={(event) => { if (event.target.matches('a')) moveIndicator(event.target); }} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) resetIndicator(); }}>{navLinks(links)}<span className="shared-nav-indicator" aria-hidden="true" style={{ transform: `translateX(${indicator.left}px)`, width: indicator.width, opacity: indicator.width ? 1 : 0 }} /></nav>
-    <div className="shared-nav-actions"><InboxLink /><a className="header-icon-button" href={appPath('/wishlist')} aria-label="Wishlist" title="Wishlist" aria-current={active('/wishlist') ? 'page' : undefined}><Heart size={19} /></a><a className="header-icon-button" href={appPath('/readers/me')} aria-label="Profile" title="Profile" aria-current={path.startsWith('/readers') ? 'page' : undefined}>{user?.avatarUrl ? <img className="navbar-profile-avatar" src={photoUrl(user.avatarUrl)} alt="" /> : <UserRound size={19} />}</a><button type="button" className="shared-menu-toggle" aria-label={open ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={open} aria-controls="shared-mobile-nav" onClick={() => setOpen(!open)}>{open ? <X size={22} /> : <Menu size={22} />}</button></div>
+    <div className="shared-nav-actions"><InboxLink /><a className="header-icon-button" href={appPath('/wishlist')} aria-label="Wishlist" title="Wishlist" aria-current={active('/wishlist') ? 'page' : undefined}><Heart size={19} /></a><div className="profile-menu" onMouseEnter={() => setProfileOpen(true)} onMouseLeave={() => setProfileOpen(false)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setProfileOpen(false); }}><button type="button" className="header-icon-button" aria-label="Profile options" title="Profile" aria-haspopup="menu" aria-expanded={profileOpen} aria-current={path.startsWith('/readers') ? 'page' : undefined} onClick={() => setProfileOpen((value) => !value)}>{user?.avatarUrl ? <img className="navbar-profile-avatar" src={photoUrl(user.avatarUrl)} alt="" /> : <UserRound size={19} />}</button>{profileOpen && <div className="profile-menu-popover" role="menu"><a role="menuitem" href={appPath('/readers/me')}>View profile</a>{user && <><button role="menuitem" type="button" onClick={() => { clearToken(); setProfileOpen(false); }}>Log out</button></>}</div>}</div><button type="button" className="shared-menu-toggle" aria-label={open ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={open} aria-controls="shared-mobile-nav" onClick={() => setOpen(!open)}>{open ? <X size={22} /> : <Menu size={22} />}</button></div>
     {open && <nav id="shared-mobile-nav" className="shared-mobile-nav" aria-label="Mobile navigation">{navLinks([...links, ['Wishlist', '/wishlist'], ['Profile', '/readers/me']])}<button type="button" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'messages' } })); }}>Messages</button><button type="button" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } })); }}>Notifications & requests</button></nav>}
   </header></>;
 }
