@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Heart } from 'lucide-react';
-import { api, getToken, localGet, localSet } from '../services/api.js';
+import { api, getToken, getWishlistIds, invalidateWishlistIds, localGet, localSet } from '../services/api.js';
 
 export default function WishlistButton({ bookId, example, onSignIn, onChange, className = 'detail-secondary' }) {
   const [saved, setSaved] = useState(false);
@@ -9,7 +9,7 @@ export default function WishlistButton({ bookId, example, onSignIn, onChange, cl
   useEffect(() => {
     let active = true;
     if (example || !getToken()) { setSaved(localGet('betterreads.wishlist', []).includes(bookId)); return () => { active = false; }; }
-    api(`/api/wishlist/check/${encodeURIComponent(bookId)}`).then((data) => { if (active) setSaved(Boolean(data.inWishlist)); }).catch(() => { if (active) setError('Could not load wishlist.'); });
+    getWishlistIds().then((ids) => { if (active) setSaved(ids.has(String(bookId))); }).catch(() => { if (active) setError('Could not load wishlist.'); });
     return () => { active = false; };
   }, [bookId, example]);
   async function toggle(event) {
@@ -23,6 +23,7 @@ export default function WishlistButton({ bookId, example, onSignIn, onChange, cl
         localSet('betterreads.wishlist', saved ? list.filter((id) => id !== bookId) : [...new Set([...list, bookId])]);
       } else {
         await api(`/api/wishlist/${encodeURIComponent(bookId)}`, { method: saved ? 'DELETE' : 'POST' });
+        invalidateWishlistIds();
       }
       setSaved(!saved);
       onChange?.();

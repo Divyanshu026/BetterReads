@@ -6,7 +6,6 @@ import App from './App.jsx';
 import ListingPage from './ListingPage.jsx';
 import BookDetailPage from './BookDetailPage.jsx';
 import CatalogPage from './CatalogPage.jsx';
-import WishlistPage from './WishlistPage.jsx';
 import CommunityPage from './CommunityPage.jsx';
 import ReaderProfilePage from './ReaderProfilePage.jsx';
 
@@ -14,7 +13,7 @@ const path = currentPath().replace(/\/$/, '');
 let page = <App />;
 if (path === '/list-book') page = <ListingPage />;
 else if (path === '/books') page = <CatalogPage />;
-else if (path === '/wishlist') page = <WishlistPage />;
+else if (path === '/wishlist') { const params = new URLSearchParams(window.location.search); params.set('openWishlist', '1'); window.location.replace(`${appPath('/')}?${params}`); }
 else if (path === '/inbox') { const params = new URLSearchParams(window.location.search); params.set('openInbox', '1'); window.location.replace(`${appPath('/')}?${params}`); }
 else if (path === '/community') page = <CommunityPage />;
 else if (path === '/readers/me') page = <ReaderProfilePage mine />;

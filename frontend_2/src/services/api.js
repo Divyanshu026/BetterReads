@@ -27,6 +27,20 @@ export async function getAllBooks(query = '', signal) {
 export function localGet(key, fallback) { try { const value = localStorage.getItem(key); return value ? JSON.parse(value) : fallback; } catch { return fallback; } }
 export function localSet(key, value) { localStorage.setItem(key, JSON.stringify(value)); window.dispatchEvent(new Event('betterreads:local-change')); }
 
+// Fetch the viewer's wishlist IDs once and share the result, so a grid of
+// cards makes a single request instead of one /wishlist/check call per card.
+let wishlistIdsPromise = null;
+export function getWishlistIds() {
+  if (!getToken()) return Promise.resolve(new Set());
+  if (!wishlistIdsPromise) {
+    wishlistIdsPromise = api('/api/wishlist')
+      .then((data) => new Set((data.wishlist || []).map((book) => String(book._id))))
+      .catch((err) => { wishlistIdsPromise = null; throw err; });
+  }
+  return wishlistIdsPromise;
+}
+export function invalidateWishlistIds() { wishlistIdsPromise = null; }
+
 const accountRequests = new Map();
 export function getCurrentUser() {
   const token = getToken();
