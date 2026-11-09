@@ -1,8 +1,9 @@
 import { appPath } from '../services/paths.js';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import MessageInbox from './MessageInbox.jsx';
 import { getToken, setToken, clearToken } from '../services/auth.js';
+import { googleClientId, renderGoogleButton } from '../services/google.js';
 
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
@@ -32,6 +33,10 @@ export default function AccountPanel({ onAuthenticated }) {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [googleError, setGoogleError] = useState('');
+  const googleRef = useRef(null);
+  const firstFieldRef = useRef(null);
 
   useEffect(() => {
     const token = getToken();
@@ -57,18 +62,84 @@ export default function AccountPanel({ onAuthenticated }) {
     return () => controller.abort();
   }, []);
 
+  // Ask the backend which social providers it can actually complete.
+  useEffect(() => {
+    if (!googleClientId) return undefined;
+    const controller = new AbortController();
+    fetch(`${apiBase}/api/auth/providers`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => { if (data) setGoogleEnabled(Boolean(data.google)); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
+  // Render Google's official button while the signed-out form is showing.
+  useEffect(() => {
+    if (checking || user || !googleEnabled) return undefined;
+    let cleanup = () => {};
+    let active = true;
+    renderGoogleButton(googleRef.current, handleGoogleCredential)
+      .then((fn) => { if (active) cleanup = fn; else fn(); })
+      .catch(() => { if (active) setGoogleError('Google sign-in could not load. Use your email instead.'); });
+    return () => { active = false; cleanup(); };
+  }, [checking, user, googleEnabled, mode]);
+
+  // Move focus to the first field when switching between log in and sign up.
+  useEffect(() => {
+    if (!checking && !user) firstFieldRef.current?.focus();
+  }, [mode, checking, user]);
+
+  async function handleGoogleCredential(credential) {
+    if (busy) return;
+    setError('');
+    setGoogleError('');
+    setBusy(true);
+    try {
+      const response = await fetch(`${apiBase}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await readAccountResponse(response);
+      if (typeof data.token !== 'string' || !data.user) {
+        throw new Error('The account server returned an invalid response. Please try again.');
+      }
+      setToken(data.token, true);
+      setUser(data.user);
+      onAuthenticated?.();
+    } catch (err) {
+      setError(err instanceof TypeError ? 'Unable to connect to the server. Please try again.' : err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     if (busy) return;
     setError('');
     const form = new FormData(event.currentTarget);
+    const email = String(form.get('email')).trim();
     const password = String(form.get('password'));
+    const name = mode === 'register' ? String(form.get('name')).trim() : '';
+    if (mode === 'register' && !name) {
+      setError('Enter your name.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Enter a valid email address.');
+      return;
+    }
+    if (mode === 'register' && password.length < 8) {
+      setError('Use a password of at least 8 characters.');
+      return;
+    }
     if (new TextEncoder().encode(password).length > 72) {
       setError('Password must be no more than 72 bytes.');
       return;
     }
-    const body = { email: String(form.get('email')).trim(), password };
-    if (mode === 'register') body.name = String(form.get('name')).trim();
+    const body = { email, password };
+    if (mode === 'register') body.name = name;
     setBusy(true);
     try {
       const response = await fetch(`${apiBase}/api/auth/${mode}`, {
@@ -116,16 +187,18 @@ export default function AccountPanel({ onAuthenticated }) {
       </div>
       <h3>{mode === 'register' ? 'Begin your next chapter.' : 'Welcome back, reader.'}</h3>
       <p>{mode === 'register' ? 'Create an account to join BetterReads.' : 'Log in to your BetterReads account.'}</p>
-      <div className="account-social" aria-label="Social sign-in options">
-        <button type="button" disabled>Apple</button>
-        <button type="button" disabled>Google</button>
-        <button type="button" disabled>X</button>
-      </div>
-      <p className="account-social-note">Social sign-in is not available yet.</p>
-      <div className="account-divider"><span>or continue with email</span></div>
-      <form className="account-form" onSubmit={handleSubmit}>
-        {mode === 'register' && <label>Name<input name="name" autoComplete="name" maxLength={100} required /></label>}
-        <label>Email<input name="email" type="email" autoComplete="email" required /></label>
+      {googleEnabled && (
+        <>
+          <div className="account-social" aria-label="Continue with Google">
+            <div ref={googleRef} className="google-button-slot" />
+          </div>
+          {googleError && <p className="account-social-note" role="status">{googleError}</p>}
+          <div className="account-divider"><span>or continue with email</span></div>
+        </>
+      )}
+      <form className="account-form" onSubmit={handleSubmit} noValidate>
+        {mode === 'register' && <label>Name<input ref={firstFieldRef} name="name" autoComplete="name" maxLength={100} required /></label>}
+        <label>Email<input ref={mode === 'register' ? undefined : firstFieldRef} name="email" type="email" autoComplete="email" inputMode="email" required /></label>
         <label>Password<span className="account-password"><input name="password" type={showPassword ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={mode === 'register' ? 8 : undefined} required /><button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button></span></label>
         {mode === 'register' && <small>Use at least 8 characters.</small>}
         <label className="account-remember"><input name="remember" type="checkbox" /> Remember me</label>

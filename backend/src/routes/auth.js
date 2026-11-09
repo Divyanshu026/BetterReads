@@ -1,13 +1,17 @@
 // Express router for authentication endpoints
 const express = require('express');
 const router = express.Router();
-// Controller handlers: register and login
-const { register, login } = require('../controllers/authController');
+// Controller handlers: register, login, Google sign-in, and provider status
+const { register, login, google, providers } = require('../controllers/authController');
 
+// GET /api/auth/providers — which social sign-in options this server supports
+router.get('/providers', providers);
 // POST /api/auth/register — create a new account
 router.post('/register', register);
 // POST /api/auth/login — authenticate and receive a JWT
 router.post('/login', login);
+// POST /api/auth/google — sign in or register with a Google ID token
+router.post('/google', google);
 router.get(
   '/me',
   require('../middleware/auth').requireAuth,

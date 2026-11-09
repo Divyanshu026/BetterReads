@@ -22,6 +22,9 @@ module.exports = {
   // Token lifetime for JWTs; examples: '1h', '7d'
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
 
+  // Google OAuth client ID; when set, Google Sign-In is enabled. Leave blank to disable.
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+
   // Cloudinary credentials for image uploads (optional until media is implemented)
   cloudinary: {
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

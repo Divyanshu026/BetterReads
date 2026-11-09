@@ -6,8 +6,10 @@ const UserSchema = new mongoose.Schema(
   {
     // Unique email used for login and identification
     email: { type: String, required: true, unique: true },
-    // Hashed password (bcrypt). Plaintext is never stored.
+    // Hashed password (bcrypt). Plaintext is never stored. Optional for social accounts.
     passwordHash: { type: String },
+    // Google account subject id, set for users who signed in with Google.
+    googleId: { type: String, index: true, sparse: true },
     // Display name shown in profiles
     name: { type: String, trim: true, maxlength: 100 },
     // Short biography/about
