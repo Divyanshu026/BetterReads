@@ -72,12 +72,39 @@ export default function CatalogPage() {
       (!filters.availability || (filters.availability === 'exchange' ? book.barterAvailable : filters.availability === 'borrow' ? book.borrowAvailable === true : book.meetupAvailable === true));
   }).sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title) : sort === 'relevance' && query ? Number(text(b.title).startsWith(query)) - Number(text(a.title).startsWith(query)) : new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   const active = [filters.type, filters.genre, ...filters.authors, filters.condition, filters.availability && ({ exchange: 'Exchange', borrow: 'Borrowing', meetup: 'Meetup' }[filters.availability]), filters.city].filter(Boolean);
+  const [detecting, setDetecting] = useState(false);
   function apply() { setFilters(draft); localSet('betterreads.city', draft.city.trim()); setFilterOpen(false); }
   function clear() { setFilters(emptyFilters); setDraft(emptyFilters); localSet('betterreads.city', ''); setAuthorSearch(''); }
+  async function reverseGeocode(latitude, longitude) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`;
+    const response = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error('Reverse geocoding failed.');
+    const data = await response.json();
+    const a = data.address || {};
+    return a.city || a.town || a.village || a.municipality || a.suburb || a.county || a.state_district || a.state || '';
+  }
   function detectLocation() {
     setLocationMessage('');
     if (!navigator.geolocation) { setLocationMessage('Location is unavailable. Enter a city instead.'); return; }
-    navigator.geolocation.getCurrentPosition(() => setLocationMessage('Location detected. City lookup is not configured, so please enter your city.'), () => setLocationMessage('Location permission was not granted. Enter a city instead.'), { timeout: 10000, maximumAge: 300000 });
+    setDetecting(true);
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const city = await reverseGeocode(position.coords.latitude, position.coords.longitude);
+        if (city) {
+          setDraft((current) => ({ ...current, city }));
+          setLocationMessage(`Detected ${city}.`);
+        } else {
+          setLocationMessage('Could not identify your city. Enter it manually.');
+        }
+      } catch {
+        setLocationMessage('Location lookup is unavailable right now. Enter a city instead.');
+      } finally {
+        setDetecting(false);
+      }
+    }, (error) => {
+      setDetecting(false);
+      setLocationMessage(error.code === error.PERMISSION_DENIED ? 'Location permission was not granted. Enter a city instead.' : 'Could not read your location. Enter a city instead.');
+    }, { timeout: 10000, maximumAge: 300000 });
   }
   return <div className="min-h-screen bg-background text-foreground font-sans"><Navbar /><main className="mx-auto max-w-[1280px] px-6 py-8 max-sm:px-4 max-sm:py-6">
     <div className="flex items-center gap-3 text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
@@ -141,7 +168,7 @@ export default function CatalogPage() {
                 <FieldLabel htmlFor="filter-city">City or area</FieldLabel>
                 <div className="flex gap-2">
                   <Input id="filter-city" list="book-cities" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} placeholder="All locations" />
-                  <Button type="button" variant="outline" size="icon" aria-label="Use my location" onClick={detectLocation}><MapPin /></Button>
+                  <Button type="button" variant="outline" size="icon" aria-label="Use my location" onClick={detectLocation} disabled={detecting}><MapPin /></Button>
                 </div>
                 <datalist id="book-cities">{cities.map((city) => <option key={city} value={city} />)}</datalist>
                 {locationMessage && <FieldDescription role="status">{locationMessage}</FieldDescription>}
@@ -171,7 +198,7 @@ export default function CatalogPage() {
           <Field><FieldLabel htmlFor="catalog-city">City or area</FieldLabel><Input id="catalog-city" list="location-cities" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} placeholder="Search for a city" /></Field>
           <datalist id="location-cities">{cities.map((city) => <option key={city} value={city} />)}</datalist>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={detectLocation}>Use my location</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={detectLocation} disabled={detecting}>{detecting ? 'Detecting…' : 'Use my location'}</Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => { const next = { ...filters, city: '' }; setFilters(next); setDraft(next); localSet('betterreads.city', ''); setLocationOpen(false); }}>All locations</Button>
           </div>
           <Button type="button" size="sm" onClick={() => { const next = { ...filters, city: draft.city.trim() }; setFilters(next); setDraft(next); localSet('betterreads.city', next.city); setLocationOpen(false); }}>Apply location</Button>
