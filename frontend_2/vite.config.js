@@ -1,9 +1,12 @@
 import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
+import path from 'node:path';
 
 const base = process.env.VITE_BASE_PATH || '/';
 export default defineConfig({
   base,
-  plugins: [{
+  resolve: { alias: { '@': path.resolve(import.meta.dirname, 'src') } },
+  plugins: [tailwindcss(), {
     name: 'github-pages-route-fallback',
     generateBundle() {
       const basePath = JSON.stringify(base.endsWith('/') ? base : `${base}/`);

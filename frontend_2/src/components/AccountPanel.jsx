@@ -4,6 +4,10 @@ import { Eye, EyeOff } from 'lucide-react';
 import MessageInbox from './MessageInbox.jsx';
 import { getToken, setToken, clearToken } from '../services/auth.js';
 import { googleClientId, renderGoogleButton } from '../services/google.js';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { FieldGroup, Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
@@ -161,51 +165,59 @@ export default function AccountPanel({ onAuthenticated }) {
     }
   }
 
-  if (checking) return <p role="status">Loading your account…</p>;
-  if (user && showInbox) return <><button type="button" className="listing-return" onClick={() => setShowInbox(false)}>Back to profile</button><MessageInbox user={user} /></>;
+  if (checking) return <p role="status" className="text-sm text-muted-foreground">Loading your account…</p>;
+  if (user && showInbox) return <><Button variant="ghost" size="sm" type="button" className="mb-2" onClick={() => setShowInbox(false)}>Back to profile</Button><MessageInbox user={user} /></>;
   if (user) {
     return (
-      <div className="account-panel">
-        <p>Welcome, {user.name || 'reader'}.</p>
-        <p className="account-email">{user.email}</p>
-        <p className="panel-note">Your books, requests, and reading list are ready.</p>
-        <p><a className="detail-secondary" href={appPath('/readers/me')}>My profile &amp; listings</a> <button className="detail-secondary" type="button" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-wishlist'))}>Wishlist</button> <button className="detail-secondary" type="button" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } }))}>Requests</button></p>
-        <button className="button button-red" type="button" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'messages' } }))}>Messages</button>
-        <button className="detail-secondary account-logout" type="button" onClick={() => {
-          clearToken();
-          setUser(null);
-          setError('');
-        }}>Log out</button>
+      <div className="flex flex-col gap-3">
+        <div>
+          <p className="text-sm">Welcome, {user.name || 'reader'}.</p>
+          <p className="text-sm text-muted-foreground">{user.email}</p>
+        </div>
+        <p className="text-sm text-muted-foreground">Your books, requests, and reading list are ready.</p>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm"><a href={appPath('/readers/me')}>My profile &amp; listings</a></Button>
+          <Button variant="outline" size="sm" type="button" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-wishlist'))}>Wishlist</Button>
+          <Button variant="outline" size="sm" type="button" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } }))}>Requests</Button>
+        </div>
+        <Button type="button" className="self-start" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'messages' } }))}>Messages</Button>
+        <Button variant="ghost" size="sm" type="button" className="self-start text-muted-foreground" onClick={() => { clearToken(); setUser(null); setError(''); }}>Log out</Button>
       </div>
     );
   }
   return (
-    <div className="account-panel">
-      <div className="account-tabs" aria-label="Account options">
-        <button type="button" className={mode === 'register' ? 'active' : ''} aria-pressed={mode === 'register'} onClick={() => { setMode('register'); setError(''); }}>Sign up</button>
-        <button type="button" className={mode === 'login' ? 'active' : ''} aria-pressed={mode === 'login'} onClick={() => { setMode('login'); setError(''); }}>Log in</button>
+    <div className="flex flex-col gap-4">
+      <div className="inline-flex gap-1 self-start rounded-full bg-muted p-1" aria-label="Account options">
+        <button type="button" className={cn('rounded-full px-4 py-1.5 text-sm font-medium transition-colors', mode === 'register' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')} aria-pressed={mode === 'register'} onClick={() => { setMode('register'); setError(''); }}>Sign up</button>
+        <button type="button" className={cn('rounded-full px-4 py-1.5 text-sm font-medium transition-colors', mode === 'login' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')} aria-pressed={mode === 'login'} onClick={() => { setMode('login'); setError(''); }}>Log in</button>
       </div>
-      <h3>{mode === 'register' ? 'Begin your next chapter.' : 'Welcome back, reader.'}</h3>
-      <p>{mode === 'register' ? 'Create an account to join BetterReads.' : 'Log in to your BetterReads account.'}</p>
+      <div>
+        <h3 className="font-heading text-lg font-semibold">{mode === 'register' ? 'Begin your next chapter.' : 'Welcome back, reader.'}</h3>
+        <p className="text-sm text-muted-foreground">{mode === 'register' ? 'Create an account to join BetterReads.' : 'Log in to your BetterReads account.'}</p>
+      </div>
       {googleEnabled && (
         <>
-          <div className="account-social" aria-label="Continue with Google">
-            <div ref={googleRef} className="google-button-slot" />
-          </div>
-          {googleError && <p className="account-social-note" role="status">{googleError}</p>}
-          <div className="account-divider"><span>or continue with email</span></div>
+          <div aria-label="Continue with Google"><div ref={googleRef} className="google-button-slot" /></div>
+          {googleError && <p className="text-sm text-muted-foreground" role="status">{googleError}</p>}
+          <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or continue with email<span className="h-px flex-1 bg-border" /></div>
         </>
       )}
-      <form className="account-form" onSubmit={handleSubmit} noValidate>
-        {mode === 'register' && <label>Name<input ref={firstFieldRef} name="name" autoComplete="name" maxLength={100} required /></label>}
-        <label>Email<input ref={mode === 'register' ? undefined : firstFieldRef} name="email" type="email" autoComplete="email" inputMode="email" required /></label>
-        <label>Password<span className="account-password"><input name="password" type={showPassword ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={mode === 'register' ? 8 : undefined} required /><button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button></span></label>
-        {mode === 'register' && <small>Use at least 8 characters.</small>}
-        <label className="account-remember"><input name="remember" type="checkbox" /> Remember me</label>
-        {error && <p className="account-error" role="alert">{error}</p>}
-        <button className="button button-red account-submit" type="submit" disabled={busy}>
-          {busy ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}
-        </button>
+      <form onSubmit={handleSubmit} noValidate>
+        <FieldGroup>
+          {mode === 'register' && <Field><FieldLabel htmlFor="ap-name">Name</FieldLabel><Input ref={firstFieldRef} id="ap-name" name="name" autoComplete="name" maxLength={100} required /></Field>}
+          <Field><FieldLabel htmlFor="ap-email">Email</FieldLabel><Input ref={mode === 'register' ? undefined : firstFieldRef} id="ap-email" name="email" type="email" autoComplete="email" inputMode="email" required /></Field>
+          <Field>
+            <FieldLabel htmlFor="ap-password">Password</FieldLabel>
+            <div className="relative">
+              <Input id="ap-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={mode === 'register' ? 8 : undefined} required className="pr-10" />
+              <button type="button" className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+            </div>
+            {mode === 'register' && <FieldDescription>Use at least 8 characters.</FieldDescription>}
+          </Field>
+          <Field orientation="horizontal"><input id="ap-remember" name="remember" type="checkbox" className="size-4 accent-primary" /><FieldLabel htmlFor="ap-remember" className="font-normal">Remember me</FieldLabel></Field>
+          {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+          <Button type="submit" className="w-full" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}</Button>
+        </FieldGroup>
       </form>
     </div>
   );
