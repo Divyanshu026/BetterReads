@@ -302,7 +302,7 @@ export default function App() {
               <Button variant="outline" size="icon" aria-label="Next books" disabled={!carousel.next} onClick={() => scrollBooks(1)}><ChevronRight /></Button>
             </div>
           </div>
-          <div className="mt-5 grid auto-cols-[minmax(240px,1fr)] grid-flow-col gap-5 overflow-x-auto pb-2 [scroll-snap-type:x_mandatory] [&>*]:[scroll-snap-align:start] max-md:auto-cols-[minmax(220px,80%)]" ref={track} onScroll={updateCarousel} aria-live="polite" aria-label="Book listings">
+          <div className="mt-5 grid auto-cols-[280px] grid-flow-col gap-5 overflow-x-auto pb-2 [scroll-snap-type:x_mandatory] [&>*]:[scroll-snap-align:start] max-md:auto-cols-[minmax(220px,80%)]" ref={track} onScroll={updateCarousel} aria-live="polite" aria-label="Book listings">
             {shown.length ? (
               shown.map((book, index) => <BookCard key={bookKey(book)} book={book} index={index} />)
             ) : (
