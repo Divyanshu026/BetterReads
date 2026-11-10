@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const config = require('./config');
 
 // Route modules
 const authRoutes = require('./routes/auth');
@@ -21,8 +22,14 @@ const app = express();
 
 // Security headers (Helmet): helps protect against common web vulnerabilities
 app.use(helmet());
-// CORS: allow requests from the frontend domain (currently permissive)
-app.use(cors({ origin: require('./config').frontendUrl, exposedHeaders: ['X-Total-Count'] }));
+// CORS: allow only the configured frontend origins.
+app.use(
+  cors({
+    origin: (origin, callback) =>
+      callback(null, !origin || config.frontendOrigins.includes(origin)),
+    exposedHeaders: ['X-Total-Count'],
+  }),
+);
 app.post(
   '/api/payments/webhook',
   express.raw({ type: 'application/json' }),
