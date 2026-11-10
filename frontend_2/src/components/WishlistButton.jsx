@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Heart } from 'lucide-react';
 import { api, getToken, getWishlistIds, invalidateWishlistIds, localGet, localSet } from '../services/api.js';
 
-export default function WishlistButton({ bookId, example, onSignIn, onChange, className = 'detail-secondary' }) {
+export default function WishlistButton({ bookId, example, onSignIn, onChange, className = 'detail-secondary', iconOnly = false }) {
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -30,5 +30,5 @@ export default function WishlistButton({ bookId, example, onSignIn, onChange, cl
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
-  return <span className="wishlist-control"><button type="button" className={className} aria-pressed={saved} disabled={busy} onClick={toggle}><Heart size={18} fill={saved ? 'currentColor' : 'none'} />{saved ? 'Saved' : 'Save to wishlist'}</button>{error && <small role="alert">{error}</small>}</span>;
+  return <span className="wishlist-control"><button type="button" className={className} aria-pressed={saved} aria-label={iconOnly ? (saved ? 'Saved to wishlist' : 'Save to wishlist') : undefined} disabled={busy} onClick={toggle}><Heart size={18} fill={saved ? 'currentColor' : 'none'} />{!iconOnly && (saved ? 'Saved' : 'Save to wishlist')}</button>{error && <small role="alert">{error}</small>}</span>;
 }

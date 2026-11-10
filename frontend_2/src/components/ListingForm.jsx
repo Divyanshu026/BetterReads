@@ -1,5 +1,10 @@
 import { useState } from 'react';
 import { getToken } from '../services/auth.js';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from '@/components/ui/select';
+import { FieldGroup, Field, FieldLabel } from '@/components/ui/field';
 
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
@@ -85,24 +90,26 @@ export default function ListingForm({ photos, onBusyChange, onCreated, onSignIn 
     }
   }
 
-  if (!token) return <div className="listing-form"><p>Log in or create an account to list a book.</p><button type="button" className="button button-red" onClick={onSignIn}>Log in or sign up</button></div>;
+  if (!token) return <div className="flex flex-col items-start gap-3"><p className="text-sm text-muted-foreground">Log in or create an account to list a book.</p><Button type="button" onClick={onSignIn}>Log in or sign up</Button></div>;
   return (
-    <form className="account-form listing-form" onSubmit={submit}>
-      <p>Share the details of the book you would like to pass along.</p>
-      <label>Book title<input name="title" maxLength={200} required /></label>
-      <label>Author<input name="author" maxLength={100} required /></label>
-      <div className="listing-row">
-        <label>Condition<select name="condition" defaultValue="Used"><option>New</option><option>Like New</option><option>Used</option></select></label>
-        <label>City or area<input name="city" maxLength={100} required /></label>
-      </div>
-      <label>Genre<input name="genre" maxLength={100} required /></label>
-      <label>Description<textarea name="description" maxLength={2700} rows={3} required /></label>
-      <label className="account-remember"><input name="barter" type="checkbox" defaultChecked /> Available for exchange</label>
-      <label>Books you would like in return (optional)<input name="interests" maxLength={250} /></label>
-      <label className="account-remember"><input type="checkbox" name="borrow" /> Available to borrow</label>
-      {error && <p className="account-error" role="alert">{error}</p>}
-      {sessionExpired && <button type="button" className="text-link" onClick={onSignIn}>Log in again</button>}
-      <button className="button button-red account-submit" type="submit" disabled={busy}>{busy ? 'Listing book…' : 'List book'}</button>
+    <form onSubmit={submit}>
+      <p className="mb-4 text-sm text-muted-foreground">Share the details of the book you would like to pass along.</p>
+      <FieldGroup>
+        <Field><FieldLabel htmlFor="lf-title">Book title</FieldLabel><Input id="lf-title" name="title" maxLength={200} required /></Field>
+        <Field><FieldLabel htmlFor="lf-author">Author</FieldLabel><Input id="lf-author" name="author" maxLength={100} required /></Field>
+        <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+          <Field><FieldLabel htmlFor="lf-condition">Condition</FieldLabel><Select name="condition" defaultValue="Used"><SelectTrigger id="lf-condition" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="New">New</SelectItem><SelectItem value="Like New">Like New</SelectItem><SelectItem value="Used">Used</SelectItem></SelectGroup></SelectContent></Select></Field>
+          <Field><FieldLabel htmlFor="lf-city">City or area</FieldLabel><Input id="lf-city" name="city" maxLength={100} required /></Field>
+        </div>
+        <Field><FieldLabel htmlFor="lf-genre">Genre</FieldLabel><Input id="lf-genre" name="genre" maxLength={100} required /></Field>
+        <Field><FieldLabel htmlFor="lf-description">Description</FieldLabel><Textarea id="lf-description" name="description" maxLength={2700} rows={3} required /></Field>
+        <Field orientation="horizontal"><input id="lf-barter" name="barter" type="checkbox" defaultChecked className="size-4 accent-primary" /><FieldLabel htmlFor="lf-barter" className="font-normal">Available for exchange</FieldLabel></Field>
+        <Field><FieldLabel htmlFor="lf-interests">Books you would like in return (optional)</FieldLabel><Input id="lf-interests" name="interests" maxLength={250} /></Field>
+        <Field orientation="horizontal"><input id="lf-borrow" type="checkbox" name="borrow" className="size-4 accent-primary" /><FieldLabel htmlFor="lf-borrow" className="font-normal">Available to borrow</FieldLabel></Field>
+        {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+        {sessionExpired && <Button type="button" variant="link" className="self-start px-0" onClick={onSignIn}>Log in again</Button>}
+        <Button type="submit" className="w-full" disabled={busy}>{busy ? 'Listing book…' : 'List book'}</Button>
+      </FieldGroup>
     </form>
   );
 }

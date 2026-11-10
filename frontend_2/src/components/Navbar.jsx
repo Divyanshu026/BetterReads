@@ -1,20 +1,24 @@
 import { appPath, currentPath } from '../services/paths.js';
 import { useEffect, useRef, useState } from 'react';
-import { BookOpen, Heart, LogIn, LogOut, Pencil, Menu, UserRound, X } from 'lucide-react';
+import { BookOpen, LogIn, LogOut, Menu, UserRound, X } from 'lucide-react';
 import InboxLink from './InboxLink.jsx';
 import WishlistPopup from './WishlistPopup.jsx';
 import useReader from '../services/useReader.js';
 import { photoUrl } from '../services/api.js';
 import { clearToken } from '../services/auth.js';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup,
+  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 const links = [['Home', '/'], ['Browse books', '/books'], ['List a book', '/list-book'], ['Community', '/community']];
+
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const { user } = useReader();
-  const navRef = useRef(null);
-  const profileRef = useRef(null);
-  const [indicator, setIndicator] = useState({ left: 0, width: 0 });
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     let previous = window.scrollY;
@@ -24,45 +28,126 @@ export default function Navbar() {
       else if (current > previous + 2) setHidden(true);
       previous = current;
     }
-    function onKeyDown(event) { if (event.key === 'Escape') { setOpen(false); setProfileOpen(false); } }
+    function onKeyDown(event) { if (event.key === 'Escape') setOpen(false); }
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('keydown', onKeyDown);
     return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('keydown', onKeyDown); };
   }, [open]);
-  useEffect(() => {
-    if (!profileOpen) return undefined;
-    function onPointerDown(event) { if (profileRef.current && !profileRef.current.contains(event.target)) setProfileOpen(false); }
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [profileOpen]);
   const path = currentPath();
   const active = (href) => href === '/' ? path === '/' : path === href || (href === '/books' && path.startsWith('/books/'));
-  const navLinks = (items) => items.map(([label, href]) => <a key={href} href={appPath(href)} aria-current={active(href) ? 'page' : undefined}>{label}</a>);
-  function moveIndicator(link) {
-    if (!link || !navRef.current) { setIndicator({ left: 0, width: 0 }); return; }
-    const navBox = navRef.current.getBoundingClientRect();
-    const linkBox = link.getBoundingClientRect();
-    setIndicator({ left: linkBox.left - navBox.left + 14, width: Math.max(0, linkBox.width - 28) });
-  }
-  function resetIndicator() { moveIndicator(navRef.current?.querySelector('[aria-current=page]')); }
-  useEffect(() => {
-    resetIndicator();
-    window.addEventListener('resize', resetIndicator);
-    return () => window.removeEventListener('resize', resetIndicator);
-  }, []);
-  return <><div className="shared-navbar-spacer" aria-hidden="true" /><header className={`shared-navbar ${hidden ? 'shared-navbar-hidden' : ''}`}>
-    <a className="brand" href={appPath('/')} aria-label="BetterReads home"><img className="brand-icon" src={appPath('/betterreads-reader.png')} alt="" /><span className="brand-name">BETTERREADS<small>BOOKS · NEW BEGINNINGS</small></span></a>
-    <nav ref={navRef} className="shared-nav-links" aria-label="Main navigation" onMouseLeave={resetIndicator} onMouseOver={(event) => { const link = event.target.closest('a'); if (link) moveIndicator(link); }} onFocus={(event) => { if (event.target.matches('a')) moveIndicator(event.target); }} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) resetIndicator(); }}>{navLinks(links)}<span className="shared-nav-indicator" aria-hidden="true" style={{ transform: `translateX(${indicator.left}px)`, width: indicator.width, opacity: indicator.width ? 1 : 0 }} /></nav>
-    <div className="shared-nav-actions"><InboxLink /><WishlistPopup /><div className="profile-menu" ref={profileRef} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setProfileOpen(false); }}><button type="button" className="header-icon-button" aria-label={user ? 'Account menu' : 'Log in or sign up'} title={user ? 'Account' : 'Log in'} aria-haspopup="menu" aria-expanded={profileOpen} aria-current={path.startsWith('/readers') ? 'page' : undefined} onClick={() => setProfileOpen((value) => !value)}>{user?.avatarUrl ? <img className="navbar-profile-avatar" src={photoUrl(user.avatarUrl)} alt="" /> : <UserRound size={19} />}</button>{profileOpen && <div className="profile-menu-popover" role="menu">{user ? <>
-      <div className="profile-menu-identity"><strong>{user.name || 'Reader'}</strong>{user.email && <span>{user.email}</span>}</div>
-      <a role="menuitem" href={appPath('/readers/me')}><UserRound size={16} aria-hidden="true" /> View profile</a>
-      <a role="menuitem" href={appPath('/readers/me?edit=1')}><Pencil size={16} aria-hidden="true" /> Edit profile</a>
-      <button role="menuitem" type="button" className="profile-menu-signout" onClick={() => { clearToken(); setProfileOpen(false); }}><LogOut size={16} aria-hidden="true" /> Log out</button>
-    </> : <>
-      <div className="profile-menu-identity"><strong>Welcome to BetterReads</strong><span>Log in to list, save, and exchange books.</span></div>
-      <a role="menuitem" className="profile-menu-primary" href={appPath('/readers/me')}><LogIn size={16} aria-hidden="true" /> Log in or sign up</a>
-      <a role="menuitem" href={appPath('/books')}><BookOpen size={16} aria-hidden="true" /> Browse books</a>
-    </>}</div>}</div><button type="button" className="shared-menu-toggle" aria-label={open ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={open} aria-controls="shared-mobile-nav" onClick={() => setOpen(!open)}>{open ? <X size={22} /> : <Menu size={22} />}</button></div>
-    {open && <nav id="shared-mobile-nav" className="shared-mobile-nav" aria-label="Mobile navigation">{navLinks([...links, ['Profile', '/readers/me']])}<button type="button" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'messages' } })); }}>Messages</button><button type="button" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } })); }}>Notifications & requests</button><button type="button" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-wishlist')); }}>Wishlist</button></nav>}
-  </header></>;
+  const navLinks = (items, className) => items.map(([label, href]) => (
+    <a
+      key={href}
+      href={appPath(href)}
+      aria-current={active(href) ? 'page' : undefined}
+      className={className}
+    >
+      {label}
+    </a>
+  ));
+
+  return (
+    <>
+      <div aria-hidden="true" className="h-[92px] max-md:h-[76px]" />
+      <header className={cn(
+        'fixed inset-x-0 top-0 z-50 flex h-[92px] items-center gap-4 border-b border-border bg-background/95 px-8 backdrop-blur-md transition-transform duration-300 max-md:h-[76px] max-md:px-4',
+        hidden && '-translate-y-full',
+      )}>
+        <a href={appPath('/')} aria-label="BetterReads home" className="flex items-center gap-2.5">
+          <img src={appPath('/betterreads-reader.png')} alt="" className="size-12 rounded-full max-md:size-11" />
+          <span className="flex flex-col leading-none">
+            <span className="text-[22px] font-extrabold leading-[0.9] tracking-tight text-[#9b3b2a] [font-family:'Barlow_Condensed',sans-serif] max-md:text-xl">BETTERREADS</span>
+            <span className="mt-1 text-[8px] font-bold tracking-[0.16em] text-[#5c6450]">BOOKS · NEW BEGINNINGS</span>
+          </span>
+        </a>
+
+        <nav aria-label="Main navigation" className="ml-6 hidden items-center gap-1 md:flex">
+          {navLinks(
+            links,
+            'rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:text-foreground',
+          )}
+        </nav>
+
+        <div className="ml-auto flex items-center gap-1">
+          <InboxLink />
+          <WishlistPopup />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={user ? 'Account menu' : 'Log in or sign up'}
+                aria-current={path.startsWith('/readers') ? 'page' : undefined}
+                className="rounded-full"
+              >
+                {user?.avatarUrl
+                  ? <img src={photoUrl(user.avatarUrl)} alt="" className="size-7 rounded-full object-cover" />
+                  : <UserRound />}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-25">
+              {user ? (
+                <>
+                  <DropdownMenuLabel className="flex items-center gap-2.5 py-2">
+                    <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-sm font-semibold">
+                      {user.avatarUrl ? <img src={photoUrl(user.avatarUrl)} alt="" className="size-full object-cover" /> : (user.name || 'R').slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate font-medium">{user.name || 'Reader'}</span>
+                      {user.email && <span className="truncate text-xs font-normal text-muted-foreground">{user.email}</span>}
+                    </span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild><a href={appPath('/readers/me')}><UserRound /> View profile</a></DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onSelect={() => clearToken()}><LogOut /> Log out</DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuLabel className="flex flex-col gap-0.5">
+                    <span className="font-medium">Welcome to BetterReads</span>
+                    <span className="text-xs font-normal text-muted-foreground">Log in to list, save, and exchange books.</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem asChild><a href={appPath('/readers/me')}><LogIn /> Log in or sign up</a></DropdownMenuItem>
+                    <DropdownMenuItem asChild><a href={appPath('/books')}><BookOpen /> Browse books</a></DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={open}
+            aria-controls="shared-mobile-nav"
+            onClick={() => setOpen(!open)}
+          >
+            {open ? <X /> : <Menu />}
+          </Button>
+        </div>
+      </header>
+
+      {open && (
+        <nav
+          id="shared-mobile-nav"
+          aria-label="Mobile navigation"
+          className="fixed inset-x-0 top-[72px] z-40 flex flex-col border-b border-border bg-background p-2 shadow-lg md:hidden"
+        >
+          {navLinks(
+            [...links, ['Profile', '/readers/me']],
+            'rounded-md px-3 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted aria-[current=page]:bg-muted',
+          )}
+          <Separator className="my-1" />
+          <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'messages' } })); }}>Messages</button>
+          <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } })); }}>Notifications & requests</button>
+          <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-wishlist')); }}>Wishlist</button>
+        </nav>
+      )}
+    </>
+  );
 }

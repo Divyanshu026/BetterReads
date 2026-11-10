@@ -1,12 +1,17 @@
 import { appPath } from './services/paths.js';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, MessageCircle } from 'lucide-react';
+import { MessageCircle, Repeat } from 'lucide-react';
 import WishlistButton from './components/WishlistButton.jsx';
 import ExchangeRequestModal from './components/ExchangeRequestModal.jsx';
 import Navbar from './components/Navbar.jsx';
 import AccountPanel from './components/AccountPanel.jsx';
 import { getToken } from './services/auth.js';
 import { exampleBooks } from './exampleBooks.js';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
@@ -89,41 +94,52 @@ export default function BookDetailPage({ id, exampleTitle }) {
   const isOwner = user && ownerId && String(user.id) === String(ownerId);
 
   return (
-    <div className="book-detail-page">
+    <div className="min-h-screen bg-background text-foreground font-sans">
       <Navbar />
-      <main className="book-detail-main">
-        {loading ? <p role="status">Loading book details…</p> : error ? <p role="alert">{error}</p> : book && (
-          <div className="book-detail-layout">
-            <section className="detail-gallery" aria-label="Book photos">
-              <div className="detail-photo"><img key={images[photoIndex]} src={images[photoIndex]} alt={`${book.title}, photo ${photoIndex + 1} of ${images.length}`} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = book.coverFallback || appPath('/covers/placeholder.svg'); }} /></div>
-              {images.length > 1 && <div className="detail-thumbnails">{images.map((src, index) => <button key={`${src}-${index}`} type="button" className={photoIndex === index ? 'active' : ''} aria-label={`Show photo ${index + 1}`} aria-pressed={photoIndex === index} onClick={() => setPhotoIndex(index)}><img src={src} alt="" /></button>)}</div>}
+      <main className="mx-auto max-w-[1080px] px-6 py-8 max-sm:px-4 max-sm:py-6">
+        {loading ? <p role="status" className="py-14 text-muted-foreground">Loading book details…</p> : error ? <p role="alert" className="py-14 text-muted-foreground">{error}</p> : book && (
+          <div className="grid grid-cols-[minmax(0,420px)_minmax(0,1fr)] items-start gap-8 max-md:grid-cols-1 max-md:gap-6">
+            <section aria-label="Book photos" className="flex flex-col gap-3 max-md:max-w-sm">
+              <div className="overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10"><img key={images[photoIndex]} className="aspect-[3/4] w-full object-cover" src={images[photoIndex]} alt={`${book.title}, photo ${photoIndex + 1} of ${images.length}`} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = book.coverFallback || appPath('/covers/placeholder.svg'); }} /></div>
+              {images.length > 1 && <div className="flex flex-wrap gap-2">{images.map((src, index) => <button key={`${src}-${index}`} type="button" className={cn('size-16 overflow-hidden rounded-lg ring-1 transition-all', photoIndex === index ? 'ring-2 ring-ring' : 'ring-border hover:ring-foreground/30')} aria-label={`Show photo ${index + 1}`} aria-pressed={photoIndex === index} onClick={() => setPhotoIndex(index)}><img className="size-full object-cover" src={src} alt="" /></button>)}</div>}
             </section>
-            <section className="detail-content">
-              <span className="eyebrow">{book.example ? 'EXAMPLE BOOK' : 'READER LISTING'}</span>
-              <h1>{book.title}</h1>
-              <p className="detail-author">by {book.author || 'Unknown author'}</p>
-              <strong className="detail-price">{book.example ? 'Example book' : book.barterAvailable && book.borrowAvailable ? 'Open to exchange or borrow' : book.barterAvailable ? 'Open to exchange' : book.borrowAvailable ? 'Available to borrow' : 'Contact reader'}</strong>
-              <dl className="detail-facts">
-                <div><dt>Listed by</dt><dd>{book.example ? 'Example listing' : ownerId ? <a href={appPath(`/readers/${ownerId}`)}>{book.ownerId?.name || 'Reader'}</a> : 'Reader'}</dd></div>
-                <div><dt>Condition</dt><dd>{book.example ? book.state : book.condition}</dd></div>
-                <div><dt>Location</dt><dd>{book.location?.city || 'Not provided'}</dd></div>
-                {book.genre && <div><dt>Genre</dt><dd>{book.genre}</dd></div>}
-                {!book.example && <><div><dt>Availability</dt><dd>{book.status}</dd></div><div><dt>Exchange</dt><dd>{book.barterAvailable ? 'Available' : 'Not offered'}</dd></div><div><dt>Borrowing</dt><dd>{book.borrowAvailable ? 'Available' : 'Not offered'}</dd></div><div><dt>Listed</dt><dd>{book.createdAt ? new Date(book.createdAt).toLocaleDateString() : 'Not provided'}</dd></div></>}
-              </dl>
-              <p className="detail-description">{book.example ? book.note : book.description || 'No description provided.'}</p>
-              {book.example && <p className="detail-note">This is an example book and is not available for purchase or chat.</p>}
-              {!book.example && book.status !== 'available' && <p className="detail-note">This book is currently {book.status}.</p>}
-              <div className="detail-actions">
-                <button className="button button-red" type="button" disabled={book.example || book.status !== 'available' || !ownerId || isOwner || requestStatus === 'pending' || requestStatus === 'accepted'} onClick={() => { if (!book.barterAvailable && !book.borrowAvailable) { setRequestExplanation(true); return; } setRequestExplanation(false); if (user) setShowRequest(true); else setShowAccount(true); }}><MessageCircle size={17} />{isOwner ? 'Your listing' : requestStatus === 'pending' ? 'Request pending' : requestStatus === 'accepted' ? 'Request accepted' : 'Ask for exchange or borrow'}</button>
-                <WishlistButton bookId={key} example={book.example} onSignIn={() => setShowAccount(true)} />
-                {!book.example && <button className="detail-secondary" type="button" disabled={!ownerId || isOwner || chatBusy} onClick={openChat}><MessageCircle size={18} />{isOwner ? 'Your listing' : chatBusy ? 'Opening…' : 'Message lister'}</button>}
+            <section className="flex flex-col gap-4">
+              <div>
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{book.example ? 'Example book' : 'Reader listing'}</span>
+                <h1 className="font-heading text-3xl font-bold tracking-tight break-words">{book.title}</h1>
+                <p className="mt-1 text-base text-muted-foreground">by {book.author || 'Unknown author'}</p>
               </div>
-              {requestExplanation && <p className="detail-note" role="status">The owner has not offered this book for exchange or borrowing yet. <button type="button" className="text-link" onClick={openChat}>Message the lister</button> to ask about it.</p>}
-              {!user && <p className="detail-note">Sign in to save books and exchange requests to your account.</p>}
-              {requestNotice && <p role="status" className="catalog-notice">{requestNotice} <button type="button" className="text-link" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } }))}>View requests</button></p>}
+              <div className="flex flex-wrap gap-2">
+                {book.example ? <Badge variant="secondary">Example book</Badge> : <>
+                  {book.barterAvailable && <Badge variant="secondary"><Repeat className="mr-1 size-3" /> Open to exchange</Badge>}
+                  {book.borrowAvailable && <Badge variant="secondary">Available to borrow</Badge>}
+                  {!book.barterAvailable && !book.borrowAvailable && <Badge variant="outline">Contact reader</Badge>}
+                </>}
+              </div>
+              <Card><CardContent>
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 max-sm:grid-cols-1">
+                  <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Listed by</dt><dd className="mt-0.5 text-sm">{book.example ? 'Example listing' : ownerId ? <a className="font-medium hover:underline" href={appPath(`/readers/${ownerId}`)}>{book.ownerId?.name || 'Reader'}</a> : 'Reader'}</dd></div>
+                  <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Condition</dt><dd className="mt-0.5 text-sm">{book.example ? book.state : book.condition}</dd></div>
+                  <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Location</dt><dd className="mt-0.5 text-sm">{book.location?.city || 'Not provided'}</dd></div>
+                  {book.genre && <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Genre</dt><dd className="mt-0.5 text-sm">{book.genre}</dd></div>}
+                  {!book.example && <><div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Availability</dt><dd className="mt-0.5 text-sm capitalize">{book.status}</dd></div><div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Exchange</dt><dd className="mt-0.5 text-sm">{book.barterAvailable ? 'Available' : 'Not offered'}</dd></div><div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Borrowing</dt><dd className="mt-0.5 text-sm">{book.borrowAvailable ? 'Available' : 'Not offered'}</dd></div><div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Listed</dt><dd className="mt-0.5 text-sm">{book.createdAt ? new Date(book.createdAt).toLocaleDateString() : 'Not provided'}</dd></div></>}
+                </dl>
+              </CardContent></Card>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{book.example ? book.note : book.description || 'No description provided.'}</p>
+              {book.example && <p className="text-sm text-muted-foreground">This is an example book and is not available for purchase or chat.</p>}
+              {!book.example && book.status !== 'available' && <p className="text-sm text-muted-foreground">This book is currently {book.status}.</p>}
+              <Separator />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" disabled={book.example || book.status !== 'available' || !ownerId || isOwner || requestStatus === 'pending' || requestStatus === 'accepted'} onClick={() => { if (!book.barterAvailable && !book.borrowAvailable) { setRequestExplanation(true); return; } setRequestExplanation(false); if (user) setShowRequest(true); else setShowAccount(true); }}><Repeat data-icon="inline-start" />{isOwner ? 'Your listing' : requestStatus === 'pending' ? 'Request pending' : requestStatus === 'accepted' ? 'Request accepted' : 'Ask for exchange or borrow'}</Button>
+                <WishlistButton bookId={key} example={book.example} onSignIn={() => setShowAccount(true)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted aria-pressed:text-destructive disabled:opacity-50" />
+                {!book.example && <Button type="button" variant="outline" disabled={!ownerId || isOwner || chatBusy} onClick={openChat}><MessageCircle data-icon="inline-start" />{isOwner ? 'Your listing' : chatBusy ? 'Opening…' : 'Message lister'}</Button>}
+              </div>
+              {requestExplanation && <p className="text-sm text-muted-foreground" role="status">The owner has not offered this book for exchange or borrowing yet. <button type="button" className="font-medium text-foreground hover:underline" onClick={openChat}>Message the lister</button> to ask about it.</p>}
+              {!user && <p className="text-sm text-muted-foreground">Sign in to save books and exchange requests to your account.</p>}
+              {requestNotice && <div role="status" className="rounded-lg border border-border bg-muted px-4 py-3 text-sm">{requestNotice} <button type="button" className="font-medium hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } }))}>View requests</button></div>}
               {showRequest && <ExchangeRequestModal book={book} user={user} onClose={() => setShowRequest(false)} onCreated={(_offer, warning) => { setShowRequest(false); setRequestStatus('pending'); setRequestNotice(warning || 'Request sent.'); }} />}
-              {showAccount && <section className="detail-account" aria-label="Log in or sign up"><h2>Log in to message</h2><p>After signing in, choose an action to continue.</p><AccountPanel onAuthenticated={() => { setShowAccount(false); setAuthVersion((n) => n + 1); }} /><button type="button" className="listing-return" onClick={() => setShowAccount(false)}>Close</button></section>}
-              {chatError && <p role="alert" className="account-error">{chatError}</p>}
+              {showAccount && <Card aria-label="Log in or sign up"><CardContent><h2 className="font-heading text-lg font-medium">Log in to message</h2><p className="mt-1 text-sm text-muted-foreground">After signing in, choose an action to continue.</p><div className="mt-3"><AccountPanel onAuthenticated={() => { setShowAccount(false); setAuthVersion((n) => n + 1); }} /></div><Button type="button" variant="ghost" size="sm" className="mt-3" onClick={() => setShowAccount(false)}>Close</Button></CardContent></Card>}
+              {chatError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{chatError}</div>}
             </section>
           </div>
         )}
