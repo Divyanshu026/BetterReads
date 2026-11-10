@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import BookCard from './components/BookCard.jsx';
 import AccountPanel from './components/AccountPanel.jsx';
 import Navbar from './components/Navbar.jsx';
-import { exampleBooks } from './exampleBooks.js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
@@ -58,11 +57,11 @@ const questions = [
   ],
   [
     'Are the conditions and photos real?',
-    'Listings marked as examples use illustrative details. Reader listings are provided by their owners.',
+    'Every listing is provided by the reader who owns the book.',
   ],
   [
     'Are saved books kept?',
-    'Your saved books stay in this browser tab for the duration of the session.',
+    'Your saved books stay tied to your account across devices once you log in.',
   ],
 ];
 
@@ -186,7 +185,7 @@ export default function App() {
     loadListings();
     return () => controller.abort();
   }, []);
-  const books = [...liveBooks, ...exampleBooks];
+  const books = liveBooks;
   const normalizedSearch = searchQuery.trim().toLocaleLowerCase();
   const filteredBooks = books.filter((book) => {
     const matchesSearch =
@@ -311,9 +310,8 @@ export default function App() {
             )}
           </div>
           {listingError && <p className="mt-3 text-sm text-muted-foreground" role="status">{listingError}</p>}
-          <div className="mt-4 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-            <span>Shelf may include example books</span>
-            <span>Saved books last for this browser session.</span>
+          <div className="mt-4 flex flex-wrap justify-end gap-2 text-xs text-muted-foreground">
+            <span>Saved books stay with your account.</span>
           </div>
         </section>
 

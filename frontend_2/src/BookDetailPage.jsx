@@ -6,7 +6,6 @@ import ExchangeRequestModal from './components/ExchangeRequestModal.jsx';
 import Navbar from './components/Navbar.jsx';
 import AccountPanel from './components/AccountPanel.jsx';
 import { getToken } from './services/auth.js';
-import { exampleBooks } from './exampleBooks.js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +25,7 @@ async function request(path, options = {}) {
   return data;
 }
 
-export default function BookDetailPage({ id, exampleTitle }) {
+export default function BookDetailPage({ id }) {
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -43,20 +42,13 @@ export default function BookDetailPage({ id, exampleTitle }) {
 
   useEffect(() => {
     let active = true;
-    if (exampleTitle) {
-      const example = exampleBooks.find((item) => item.title === exampleTitle);
-      if (example) setBook({ ...example, example: true, photos: [example.cover] });
-      else setError('This book could not be found.');
-      setLoading(false);
-      return () => { active = false; };
-    }
     setLoading(true);
     request(`/api/books/${encodeURIComponent(id)}`)
       .then((data) => { if (active) setBook(data); })
       .catch((err) => { if (active) setError(err.message); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [id, exampleTitle]);
+  }, [id]);
 
   useEffect(() => {
     let active = true;
@@ -88,7 +80,6 @@ export default function BookDetailPage({ id, exampleTitle }) {
     } catch (err) { setChatError(err.message); setChatBusy(false); }
   }
 
-  const key = book?.example ? book.title : book?._id;
   const images = book ? (book.photos?.length ? book.photos.map(photoUrl) : [appPath('/covers/placeholder.svg')]) : [];
   const ownerId = book?.ownerId?._id;
   const isOwner = user && ownerId && String(user.id) === String(ownerId);
@@ -105,34 +96,34 @@ export default function BookDetailPage({ id, exampleTitle }) {
             </section>
             <section className="flex flex-col gap-4">
               <div>
-                <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{book.example ? 'Example book' : 'Reader listing'}</span>
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Reader listing</span>
                 <h1 className="font-heading text-3xl font-bold tracking-tight break-words">{book.title}</h1>
                 <p className="mt-1 text-base text-muted-foreground">by {book.author || 'Unknown author'}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {book.example ? <Badge variant="secondary">Example book</Badge> : <>
-                  {book.barterAvailable && <Badge variant="secondary"><Repeat className="mr-1 size-3" /> Open to exchange</Badge>}
-                  {book.borrowAvailable && <Badge variant="secondary">Available to borrow</Badge>}
-                  {!book.barterAvailable && !book.borrowAvailable && <Badge variant="outline">Contact reader</Badge>}
-                </>}
+                {book.barterAvailable && <Badge variant="secondary"><Repeat className="mr-1 size-3" /> Open to exchange</Badge>}
+                {book.borrowAvailable && <Badge variant="secondary">Available to borrow</Badge>}
+                {!book.barterAvailable && !book.borrowAvailable && <Badge variant="outline">Contact reader</Badge>}
               </div>
               <Card><CardContent>
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-4 max-sm:grid-cols-1">
-                  <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Listed by</dt><dd className="mt-0.5 text-sm">{book.example ? 'Example listing' : ownerId ? <a className="font-medium hover:underline" href={appPath(`/readers/${ownerId}`)}>{book.ownerId?.name || 'Reader'}</a> : 'Reader'}</dd></div>
-                  <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Condition</dt><dd className="mt-0.5 text-sm">{book.example ? book.state : book.condition}</dd></div>
+                  <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Listed by</dt><dd className="mt-0.5 text-sm">{ownerId ? <a className="font-medium hover:underline" href={appPath(`/readers/${ownerId}`)}>{book.ownerId?.name || 'Reader'}</a> : 'Reader'}</dd></div>
+                  <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Condition</dt><dd className="mt-0.5 text-sm">{book.condition}</dd></div>
                   <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Location</dt><dd className="mt-0.5 text-sm">{book.location?.city || 'Not provided'}</dd></div>
                   {book.genre && <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Genre</dt><dd className="mt-0.5 text-sm">{book.genre}</dd></div>}
-                  {!book.example && <><div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Availability</dt><dd className="mt-0.5 text-sm capitalize">{book.status}</dd></div><div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Exchange</dt><dd className="mt-0.5 text-sm">{book.barterAvailable ? 'Available' : 'Not offered'}</dd></div><div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Borrowing</dt><dd className="mt-0.5 text-sm">{book.borrowAvailable ? 'Available' : 'Not offered'}</dd></div><div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Listed</dt><dd className="mt-0.5 text-sm">{book.createdAt ? new Date(book.createdAt).toLocaleDateString() : 'Not provided'}</dd></div></>}
+                  <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Availability</dt><dd className="mt-0.5 text-sm capitalize">{book.status}</dd></div>
+                  <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Exchange</dt><dd className="mt-0.5 text-sm">{book.barterAvailable ? 'Available' : 'Not offered'}</dd></div>
+                  <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Borrowing</dt><dd className="mt-0.5 text-sm">{book.borrowAvailable ? 'Available' : 'Not offered'}</dd></div>
+                  <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Listed</dt><dd className="mt-0.5 text-sm">{book.createdAt ? new Date(book.createdAt).toLocaleDateString() : 'Not provided'}</dd></div>
                 </dl>
               </CardContent></Card>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{book.example ? book.note : book.description || 'No description provided.'}</p>
-              {book.example && <p className="text-sm text-muted-foreground">This is an example book and is not available for purchase or chat.</p>}
-              {!book.example && book.status !== 'available' && <p className="text-sm text-muted-foreground">This book is currently {book.status}.</p>}
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{book.description || 'No description provided.'}</p>
+              {book.status !== 'available' && <p className="text-sm text-muted-foreground">This book is currently {book.status}.</p>}
               <Separator />
               <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" disabled={book.example || book.status !== 'available' || !ownerId || isOwner || requestStatus === 'pending' || requestStatus === 'accepted'} onClick={() => { if (!book.barterAvailable && !book.borrowAvailable) { setRequestExplanation(true); return; } setRequestExplanation(false); if (user) setShowRequest(true); else setShowAccount(true); }}><Repeat data-icon="inline-start" />{isOwner ? 'Your listing' : requestStatus === 'pending' ? 'Request pending' : requestStatus === 'accepted' ? 'Request accepted' : 'Ask for exchange or borrow'}</Button>
-                <WishlistButton bookId={key} example={book.example} onSignIn={() => setShowAccount(true)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted aria-pressed:text-destructive disabled:opacity-50" />
-                {!book.example && <Button type="button" variant="outline" disabled={!ownerId || isOwner || chatBusy} onClick={openChat}><MessageCircle data-icon="inline-start" />{isOwner ? 'Your listing' : chatBusy ? 'Opening…' : 'Message lister'}</Button>}
+                <Button type="button" disabled={book.status !== 'available' || !ownerId || isOwner || requestStatus === 'pending' || requestStatus === 'accepted'} onClick={() => { if (!book.barterAvailable && !book.borrowAvailable) { setRequestExplanation(true); return; } setRequestExplanation(false); if (user) setShowRequest(true); else setShowAccount(true); }}><Repeat data-icon="inline-start" />{isOwner ? 'Your listing' : requestStatus === 'pending' ? 'Request pending' : requestStatus === 'accepted' ? 'Request accepted' : 'Ask for exchange or borrow'}</Button>
+                <WishlistButton bookId={book._id} onSignIn={() => setShowAccount(true)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted aria-pressed:text-destructive disabled:opacity-50" />
+                <Button type="button" variant="outline" disabled={!ownerId || isOwner || chatBusy} onClick={openChat}><MessageCircle data-icon="inline-start" />{isOwner ? 'Your listing' : chatBusy ? 'Opening…' : 'Message lister'}</Button>
               </div>
               {requestExplanation && <p className="text-sm text-muted-foreground" role="status">The owner has not offered this book for exchange or borrowing yet. <button type="button" className="font-medium text-foreground hover:underline" onClick={openChat}>Message the lister</button> to ask about it.</p>}
               {!user && <p className="text-sm text-muted-foreground">Sign in to save books and exchange requests to your account.</p>}

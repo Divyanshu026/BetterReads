@@ -1,20 +1,25 @@
 import { appPath, currentPath } from '../services/paths.js';
 import { useEffect, useRef, useState } from 'react';
-import { BookOpen, LogIn, LogOut, Menu, UserRound, X } from 'lucide-react';
+import { BookOpen, ChevronsUpDown, LogIn, LogOut, Menu, UserRound, X } from 'lucide-react';
 import InboxLink from './InboxLink.jsx';
 import WishlistPopup from './WishlistPopup.jsx';
 import useReader from '../services/useReader.js';
-import { photoUrl } from '../services/api.js';
 import { clearToken } from '../services/auth.js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup,
-  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+  DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 
 const links = [['Home', '/'], ['Browse books', '/books'], ['List a book', '/list-book'], ['Community', '/community']];
+
+const avatarFor = (user) => {
+  const seed = encodeURIComponent(String(user?.id || user?.email || user?.name || 'reader'));
+  return `https://api.dicebear.com/9.x/thumbs/svg?seed=${seed}&backgroundColor=1e293b,0f172a,334155,27272a,18181b&shapeColor=f1f5f9,e2e8f0,cbd5e1,fef3c7`;
+};
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -50,7 +55,7 @@ export default function Navbar() {
     <>
       <div aria-hidden="true" className="h-[92px] max-md:h-[76px]" />
       <header className={cn(
-        'fixed inset-x-0 top-0 z-50 flex h-[92px] items-center gap-4 border-b border-border bg-background/95 px-8 backdrop-blur-md transition-transform duration-300 max-md:h-[76px] max-md:px-4',
+        'fixed inset-x-0 top-0 z-50 flex h-[92px] items-center gap-4 border-b border-border/60 bg-background/95 px-8 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)] backdrop-blur-md transition-transform duration-300 max-md:h-[76px] max-md:px-4',
         hidden && '-translate-y-full',
       )}>
         <a href={appPath('/')} aria-label="BetterReads home" className="flex items-center gap-2.5">
@@ -73,47 +78,48 @@ export default function Navbar() {
           <WishlistPopup />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={user ? 'Account menu' : 'Log in or sign up'}
-                aria-current={path.startsWith('/readers') ? 'page' : undefined}
-                className="rounded-full"
-              >
-                {user?.avatarUrl
-                  ? <img src={photoUrl(user.avatarUrl)} alt="" className="size-7 rounded-full object-cover" />
-                  : <UserRound />}
-              </Button>
+              {user ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 rounded-full pr-2.5 pl-1"
+                  aria-label="Account menu"
+                  aria-current={path.startsWith('/readers') ? 'page' : undefined}
+                >
+                  <Avatar className="size-6 border border-background">
+                    <AvatarImage src={avatarFor(user)} alt="" />
+                    <AvatarFallback>{(user.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="max-w-[10ch] truncate text-xs font-medium">{user.name || 'Reader'}</span>
+                  <ChevronsUpDown className="size-3.5 opacity-60" aria-hidden="true" />
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Log in or sign up"
+                  className="rounded-full"
+                >
+                  <UserRound />
+                </Button>
+              )}
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-25">
+            <DropdownMenuContent align="end" className="w-44" sideOffset={8}>
               {user ? (
                 <>
-                  <DropdownMenuLabel className="flex items-center gap-2.5 py-2">
-                    <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-sm font-semibold">
-                      {user.avatarUrl ? <img src={photoUrl(user.avatarUrl)} alt="" className="size-full object-cover" /> : (user.name || 'R').slice(0, 1).toUpperCase()}
-                    </span>
-                    <span className="flex min-w-0 flex-col">
-                      <span className="truncate font-medium">{user.name || 'Reader'}</span>
-                      {user.email && <span className="truncate text-xs font-normal text-muted-foreground">{user.email}</span>}
-                    </span>
-                  </DropdownMenuLabel>
+                  <DropdownMenuItem asChild>
+                    <a href={appPath('/readers/me')}><UserRound aria-hidden="true" /> Profile</a>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild><a href={appPath('/readers/me')}><UserRound /> View profile</a></DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onSelect={() => clearToken()}><LogOut /> Log out</DropdownMenuItem>
+                  <DropdownMenuItem variant="destructive" onSelect={() => clearToken()}>
+                    <LogOut aria-hidden="true" /> Log out
+                  </DropdownMenuItem>
                 </>
               ) : (
-                <>
-                  <DropdownMenuLabel className="flex flex-col gap-0.5">
-                    <span className="font-medium">Welcome to BetterReads</span>
-                    <span className="text-xs font-normal text-muted-foreground">Log in to list, save, and exchange books.</span>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem asChild><a href={appPath('/readers/me')}><LogIn /> Log in or sign up</a></DropdownMenuItem>
-                    <DropdownMenuItem asChild><a href={appPath('/books')}><BookOpen /> Browse books</a></DropdownMenuItem>
-                  </DropdownMenuGroup>
-                </>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild><a href={appPath('/readers/me')}><LogIn /> Log in or sign up</a></DropdownMenuItem>
+                  <DropdownMenuItem asChild><a href={appPath('/books')}><BookOpen /> Browse books</a></DropdownMenuItem>
+                </DropdownMenuGroup>
               )}
             </DropdownMenuContent>
           </DropdownMenu>

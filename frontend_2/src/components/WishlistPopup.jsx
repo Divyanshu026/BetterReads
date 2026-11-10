@@ -4,8 +4,7 @@ import { Heart } from 'lucide-react';
 import AccountPanel from './AccountPanel.jsx';
 import WishlistButton from './WishlistButton.jsx';
 import useReader from '../services/useReader.js';
-import { api, localGet, photoUrl } from '../services/api.js';
-import { exampleBooks } from '../exampleBooks.js';
+import { api, photoUrl } from '../services/api.js';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,15 +33,9 @@ export default function WishlistPopup() {
   const [error, setError] = useState('');
   const [fetching, setFetching] = useState(false);
   const [version, setVersion] = useState(0);
-  const [exampleIds, setExampleIds] = useState([]);
   const triggerRef = useRef(null);
 
-  const examples = exampleBooks.filter((book) => exampleIds.includes(book.title));
-  const count = items.length + examples.length;
-
-  useEffect(() => {
-    setExampleIds(localGet('betterreads.wishlist', []));
-  }, [version, open]);
+  const count = items.length;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -182,35 +175,6 @@ export default function WishlistPopup() {
                     iconOnly
                     className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background hover:text-destructive aria-pressed:text-destructive"
                     onSignIn={refresh}
-                    onChange={bump}
-                  />
-                </li>
-              ))}
-              {examples.length > 0 && items.length > 0 && (
-                <li aria-hidden="true" className="px-2 pt-3 pb-1">
-                  <span className="text-xs font-medium text-muted-foreground">Example books</span>
-                </li>
-              )}
-              {examples.map((book) => (
-                <li
-                  className="group/row flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-muted"
-                  key={book.title}
-                >
-                  <a className="shrink-0" href={appPath(`/books/example/${encodeURIComponent(book.title)}`)}>
-                    <img className="h-16 w-12 rounded-sm object-cover" src={book.cover} alt="" />
-                  </a>
-                  <a
-                    className="flex min-w-0 flex-1 flex-col gap-0.5 outline-none"
-                    href={appPath(`/books/example/${encodeURIComponent(book.title)}`)}
-                  >
-                    <strong className="truncate text-sm font-medium text-foreground group-hover/row:underline">{book.title}</strong>
-                    <span className="truncate text-xs text-muted-foreground">Example book · saved in this browser</span>
-                  </a>
-                  <WishlistButton
-                    bookId={book.title}
-                    example
-                    iconOnly
-                    className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background hover:text-destructive aria-pressed:text-destructive"
                     onChange={bump}
                   />
                 </li>

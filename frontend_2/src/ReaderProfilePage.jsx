@@ -7,7 +7,6 @@ import AuthLayout from './components/AuthLayout.jsx';
 import BookCard from './components/BookCard.jsx';
 import useReader from './services/useReader.js';
 import { api, getAllBooks, localGet, localSet, photoUrl } from './services/api.js';
-import { exampleBooks } from './exampleBooks.js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +19,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectI
 import { FieldGroup, Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
-const toCard = (book) => ({ id: book._id, title: book.title, author: book.author, genre: book.genre, barterAvailable: book.barterAvailable, borrowAvailable: book.borrowAvailable, state: book.condition, location: book.location?.city, cover: book.photos?.[0] ? photoUrl(book.photos[0]) : appPath('/covers/placeholder.svg'), coverFallback: appPath('/covers/placeholder.svg') });
+const toCard = (book) => ({ id: book._id, title: book.title, author: book.author, genre: book.genre, barterAvailable: book.barterAvailable, borrowAvailable: book.borrowAvailable, state: book.condition, location: book.location?.city, cover: book.photos?.[0] ? photoUrl(book.photos[0]) : appPath('/covers/placeholder.svg'), photos: (book.photos || []).map(photoUrl), coverFallback: appPath('/covers/placeholder.svg') });
 const readImage = (file) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Could not read this photo.')); reader.readAsDataURL(file); });
 const memberSince = (iso) => { if (!iso) return ''; const date = new Date(iso); return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); };
 
@@ -40,7 +39,6 @@ export default function ReaderProfilePage({ readerId, mine = false }) {
   const activity = communityPosts.map((post) => ({ id: post._id, type: 'Discussion', text: post.title, date: post.createdAt }));
   const visibleBooks = isMine ? books : books.filter((book) => ['available', 'reserved', 'borrowed'].includes(book.status));
   const publicPosts = communityPosts;
-  const examples = exampleBooks.filter((book) => localGet('betterreads.wishlist', []).includes(book.title));
   async function loadBooks() { if (id) setBooks(await getAllBooks(`&sellerId=${encodeURIComponent(id)}`)); }
   useEffect(() => { let active = true; if (!id) { setLoading(false); return () => { active = false; }; } setLoading(true); setProfile(null); setError(''); Promise.all([api(`/api/users/${encodeURIComponent(id)}`), getAllBooks(`&sellerId=${encodeURIComponent(id)}`)]).then(([data, list]) => { if (active) { setProfile(data.user); setBooks(list); } }).catch((err) => { if (active) setError(err.message); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [id]);
   useEffect(() => { if (!id || !['activity', 'posts'].includes(tab)) return undefined; let active = true; setCommunityError(''); api(`/api/community/posts?author=${encodeURIComponent(id)}`).then((data) => { if (active) setCommunityPosts(data.posts || []); }).catch((err) => { if (active) setCommunityError(err.message); }); return () => { active = false; }; }, [id, tab]);
@@ -59,7 +57,7 @@ export default function ReaderProfilePage({ readerId, mine = false }) {
   const tabs = isMine ? [['books', 'Bookshelf'], ['activity', 'Activity'], ['about', 'About']] : [['books', 'Bookshelf'], ['posts', 'Community posts'], ['about', 'About']];
   const currentTab = tabs.some(([key]) => key === tab) ? tab : 'books';
 
-  const savedCount = wishlistLoading || wishlistError ? null : wishlist.length + examples.length;
+  const savedCount = wishlistLoading || wishlistError ? null : wishlist.length;
   const rating = profile?.reputation?.score; const reviews = profile?.reputation?.reviewsCount || 0;
   const joined = memberSince(profile?.createdAt);
   const stats = [

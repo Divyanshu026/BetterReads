@@ -1,17 +1,19 @@
 import { appPath } from './services/paths.js';
 import { useEffect, useState } from 'react';
-import { ArrowUp, ArrowDown, BookText, MessageCircle, PenSquare, Search, Share2, X } from 'lucide-react';
+import { ArrowUp, ArrowDown, BookText, MapPin, MessageCircle, PenSquare, Search, Share2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import PageShell from './components/PageShell.jsx';
 import AccountPanel from './components/AccountPanel.jsx';
 import useReader from './services/useReader.js';
-import { api } from './services/api.js';
+import { api, photoUrl } from './services/api.js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from '@/components/ui/select';
 import { FieldGroup, Field, FieldLabel } from '@/components/ui/field';
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupButton } from '@/components/ui/input-group';
@@ -129,43 +131,59 @@ export default function CommunityPage() {
           {notice && <div role="status" className="mb-5 rounded-lg border border-border bg-muted px-4 py-3 text-sm">{notice}</div>}
 
           <Card className="min-h-[calc(100vh-92px-3rem)] gap-0 overflow-hidden p-0">
-            <div className="grid h-full grid-cols-[220px_minmax(0,1fr)] items-stretch max-[680px]:grid-cols-1">
-              <div className="flex h-full flex-col gap-1 border-r border-border p-5 max-[680px]:border-r-0 max-[680px]:border-b">
-                <span className="px-3 py-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Explore</span>
-                <button
-                  type="button"
-                  className={cn(
-                    'rounded-md px-3 py-2 text-left text-sm font-medium leading-tight transition-colors hover:bg-muted',
-                    !category ? 'bg-muted text-foreground' : 'text-muted-foreground',
-                  )}
-                  onClick={() => setCategory('')}
-                >
-                  All discussions
-                </button>
-                {categories.map((name) => (
+            <div className="grid h-full grid-cols-[240px_minmax(0,1fr)] items-stretch max-[680px]:grid-cols-1">
+              <div className="flex h-full flex-col border-r border-border max-[680px]:border-r-0 max-[680px]:border-b">
+                {user && (
+                  <>
+                    <a
+                      href={appPath('/readers/me')}
+                      className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-muted/60"
+                      aria-label="View your profile"
+                    >
+                      <Avatar className="size-10">
+                        <AvatarImage src={user.avatarUrl ? photoUrl(user.avatarUrl) : undefined} alt="" />
+                        <AvatarFallback>{(user.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate text-sm font-semibold">{user.name || 'Reader'}</span>
+                        <span className="truncate text-xs text-muted-foreground">View your profile</span>
+                      </span>
+                    </a>
+                    <Separator />
+                  </>
+                )}
+                <div className="flex flex-col gap-1 p-5">
+                  <span className="px-3 py-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Explore</span>
                   <button
                     type="button"
-                    key={name}
                     className={cn(
                       'rounded-md px-3 py-2 text-left text-sm font-medium leading-tight transition-colors hover:bg-muted',
-                      category === name ? 'bg-muted text-foreground' : 'text-muted-foreground',
+                      !category ? 'bg-muted text-foreground' : 'text-muted-foreground',
                     )}
-                    onClick={() => setCategory(name)}
+                    onClick={() => setCategory('')}
                   >
-                    {name}
+                    All discussions
                   </button>
-                ))}
+                  {categories.map((name) => (
+                    <button
+                      type="button"
+                      key={name}
+                      className={cn(
+                        'rounded-md px-3 py-2 text-left text-sm font-medium leading-tight transition-colors hover:bg-muted',
+                        category === name ? 'bg-muted text-foreground' : 'text-muted-foreground',
+                      )}
+                      onClick={() => setCategory(name)}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <section aria-label="Community discussions" className="flex min-w-0 flex-col gap-4 p-5">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">A place for readers</span>
-                    <h1 className="font-heading text-2xl font-bold tracking-tight">The reading room</h1>
-                  </div>
-                  <Button type="button" onClick={openComposer} disabled={accountLoading}>
-                    <PenSquare data-icon="inline-start" /> Start a discussion
-                  </Button>
+                <div>
+                  <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">A place for readers</span>
+                  <h1 className="font-heading text-2xl font-bold tracking-tight">The reading room</h1>
                 </div>
 
                 <InputGroup className="h-9 rounded-full">
@@ -193,9 +211,10 @@ export default function CommunityPage() {
                     onClick={openComposer}
                     className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted"
                   >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background text-xs font-semibold uppercase">
-                      {(user.name || 'R').slice(0, 1)}
-                    </span>
+                    <Avatar className="size-8">
+                      <AvatarImage src={user.avatarUrl ? photoUrl(user.avatarUrl) : undefined} alt="" />
+                      <AvatarFallback className="text-xs font-semibold">{(user.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
+                    </Avatar>
                     <span className="flex-1 truncate">Share something with the community…</span>
                     <PenSquare className="size-4" aria-hidden="true" />
                   </button>
@@ -224,9 +243,10 @@ export default function CommunityPage() {
                       return (
                         <article key={post._id} className="flex flex-col gap-3 rounded-xl px-2 py-4 transition-colors hover:bg-muted/30">
                           <header className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                              {(post.author?.name || 'R').slice(0, 1).toUpperCase()}
-                            </div>
+                            <Avatar className="size-8">
+                              <AvatarImage src={post.author?.avatarUrl ? photoUrl(post.author.avatarUrl) : undefined} alt="" />
+                              <AvatarFallback className="text-xs font-semibold">{(post.author?.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
+                            </Avatar>
                             <a className="truncate font-medium hover:underline" href={appPath(`/readers/${post.author?._id}`)}>
                               u/{(post.author?.name || 'reader').replace(/\s+/g, '').toLowerCase()}
                             </a>
@@ -282,9 +302,10 @@ export default function CommunityPage() {
                               ) : comments[post._id].length ? (
                                 comments[post._id].map((entry) => (
                                   <div className="flex gap-2 text-sm" key={entry._id}>
-                                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                                      {(entry.author?.name || 'R').slice(0, 1).toUpperCase()}
-                                    </div>
+                                    <Avatar className="size-7">
+                                      <AvatarImage src={entry.author?.avatarUrl ? photoUrl(entry.author.avatarUrl) : undefined} alt="" />
+                                      <AvatarFallback className="text-xs font-semibold">{(entry.author?.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
                                     <div className="min-w-0 flex-1">
                                       <a className="font-medium hover:underline" href={appPath(`/readers/${entry.author?._id}`)}>
                                         u/{(entry.author?.name || 'reader').replace(/\s+/g, '').toLowerCase()}

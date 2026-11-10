@@ -1,30 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Heart } from 'lucide-react';
-import { api, getToken, getWishlistIds, invalidateWishlistIds, localGet, localSet } from '../services/api.js';
+import { api, getToken, getWishlistIds, invalidateWishlistIds } from '../services/api.js';
 
-export default function WishlistButton({ bookId, example, onSignIn, onChange, className = 'detail-secondary', iconOnly = false }) {
+export default function WishlistButton({ bookId, onSignIn, onChange, className = 'detail-secondary', iconOnly = false }) {
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
-    if (example || !getToken()) { setSaved(localGet('betterreads.wishlist', []).includes(bookId)); return () => { active = false; }; }
+    if (!getToken()) { setSaved(false); return () => { active = false; }; }
     getWishlistIds().then((ids) => { if (active) setSaved(ids.has(String(bookId))); }).catch(() => { if (active) setError('Could not load wishlist.'); });
     return () => { active = false; };
-  }, [bookId, example]);
+  }, [bookId]);
   async function toggle(event) {
     event.preventDefault(); event.stopPropagation();
     if (busy) return;
-    if (!example && !getToken()) { onSignIn?.(); return; }
+    if (!getToken()) { onSignIn?.(); return; }
     setBusy(true); setError('');
     try {
-      if (example) {
-        const list = localGet('betterreads.wishlist', []);
-        localSet('betterreads.wishlist', saved ? list.filter((id) => id !== bookId) : [...new Set([...list, bookId])]);
-      } else {
-        await api(`/api/wishlist/${encodeURIComponent(bookId)}`, { method: saved ? 'DELETE' : 'POST' });
-        invalidateWishlistIds();
-      }
+      await api(`/api/wishlist/${encodeURIComponent(bookId)}`, { method: saved ? 'DELETE' : 'POST' });
+      invalidateWishlistIds();
       setSaved(!saved);
       onChange?.();
     } catch (err) { setError(err.message); }
