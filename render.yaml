@@ -19,7 +19,9 @@ services:
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: FRONTEND_URL
-        value: https://divyanshu026.github.io
+        value: https://bettereads.dvyanshu.page
+      - key: FRONTEND_ORIGINS
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY

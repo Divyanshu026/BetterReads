@@ -8,6 +8,17 @@ const dotenv = require('dotenv');
 // This makes values like process.env.MONGO_URI available in code
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+const frontendOrigins = [frontendUrl, ...(process.env.FRONTEND_ORIGINS || '').split(',')]
+  .map((origin) => {
+    try {
+      return new URL(origin.trim()).origin;
+    } catch {
+      return null;
+    }
+  })
+  .filter(Boolean);
+
 // Export a single configuration object so the rest of the app can import settings
 module.exports = {
   // Port Express will listen on; default to 5000 if not provided
@@ -39,7 +50,11 @@ module.exports = {
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
 
   // Frontend URL for redirects (Stripe success/cancel URLs)
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  // Primary frontend URL for redirects, included in the CORS allowlist.
+  frontendUrl,
+
+  // Additional comma-separated frontend origins allowed to call the API.
+  frontendOrigins: [...new Set(frontendOrigins)],
 
   // Node environment
   nodeEnv: process.env.NODE_ENV || 'development',
