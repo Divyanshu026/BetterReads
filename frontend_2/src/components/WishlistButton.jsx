@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Heart } from 'lucide-react';
-import { api, getToken, getWishlistIds, invalidateWishlistIds } from '../services/api.js';
+import { api, isSignedIn, getWishlistIds, invalidateWishlistIds } from '../services/api.js';
 import { useAuth } from '../services/AuthContext.jsx';
 
 export default function WishlistButton({ bookId, onChange, className = 'detail-secondary', iconOnly = false }) {
@@ -10,7 +10,7 @@ export default function WishlistButton({ bookId, onChange, className = 'detail-s
   const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
-    if (!getToken()) { setSaved(false); return () => { active = false; }; }
+    if (!isSignedIn()) { setSaved(false); return () => { active = false; }; }
     getWishlistIds().then((ids) => { if (active) setSaved(ids.has(String(bookId))); }).catch(() => { if (active) setError('Could not load wishlist.'); });
     return () => { active = false; };
   }, [bookId]);

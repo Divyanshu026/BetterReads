@@ -20,6 +20,11 @@ const UserSchema = new mongoose.Schema(
     },
     // Hashed password (bcrypt). Plaintext is never stored. Optional for social accounts.
     passwordHash: { type: String },
+    // Whether the email address has been confirmed. Social sign-ins (Google)
+    // arrive already verified; email/password signups verify via a link. Used
+    // for the soft gate on sensitive actions (checkout, offers, messaging).
+    emailVerified: { type: Boolean, default: false },
+    emailVerifiedAt: { type: Date },
     // Google account subject id, set for users who signed in with Google.
     googleId: { type: String, index: true, sparse: true },
     // Display name shown in profiles

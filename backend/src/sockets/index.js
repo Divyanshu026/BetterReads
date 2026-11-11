@@ -1,15 +1,34 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const cookie = require('cookie');
 const config = require('../config');
 const Chat = require('../models/Chat');
+const { ACCESS_COOKIE } = require('../lib/cookies');
+
+// The access token may arrive in the handshake `auth.token` field (explicit
+// clients, tests) or as the httpOnly `br_access` cookie sent with the WS
+// upgrade request (browsers). Prefer the explicit field, fall back to the cookie.
+function handshakeToken(socket) {
+  const fromAuth = socket.handshake.auth?.token;
+  if (fromAuth) return fromAuth;
+  const header = socket.handshake.headers?.cookie;
+  if (!header) return null;
+  try {
+    return cookie.parse(header)[ACCESS_COOKIE] || null;
+  } catch {
+    return null;
+  }
+}
+
 function initSockets(server) {
   const io = new Server(server, {
-    cors: { origin: config.frontendOrigins },
+    // credentials:true lets the browser send the auth cookie on the WS handshake.
+    cors: { origin: config.frontendOrigins, credentials: true },
     maxHttpBufferSize: 16384,
   });
   io.use((socket, next) => {
     try {
-      socket.user = jwt.verify(socket.handshake.auth?.token, config.jwtSecret, {
+      socket.user = jwt.verify(handshakeToken(socket), config.jwtSecret, {
         algorithms: ['HS256'],
       });
       next();
@@ -18,9 +37,12 @@ function initSockets(server) {
     }
   });
   io.on('connection', (socket) => {
+    // Force-disconnect when the access token expires. The JWT always carries an
+    // `exp` claim (set via expiresIn), so this bounds a connection to the life
+    // of its token regardless of which transport delivered it.
     const expiry = setTimeout(
       () => socket.disconnect(true),
-      Math.max(0, socket.user.exp * 1000 - Date.now()),
+      Math.max(0, (socket.user.exp || 0) * 1000 - Date.now()),
     );
     socket.on('disconnect', () => clearTimeout(expiry));
     const member = async (id) => {

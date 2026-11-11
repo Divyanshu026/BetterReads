@@ -1,11 +1,36 @@
 export const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-import { getToken } from './auth.js';
+import { isSignedIn, sessionKey, markSignedOut } from './auth.js';
 import { appPath } from './paths.js';
-export { getToken } from './auth.js';
+export { isSignedIn, sessionKey } from './auth.js';
 export const photoUrl = (url) => url?.startsWith('/uploads/') ? apiBase + url : url?.startsWith('/covers/') ? appPath(url) : url;
+
+// Auth now rides on httpOnly cookies, so every request must send credentials.
+// The access cookie is short-lived; when it expires the server returns 401 and
+// we transparently rotate it once via the refresh session, then retry.
+let refreshInFlight = null;
+function refreshSession() {
+  if (!refreshInFlight) {
+    refreshInFlight = fetch(`${apiBase}/api/auth/refresh`, { method: 'POST', credentials: 'include' })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => { refreshInFlight = null; });
+  }
+  return refreshInFlight;
+}
+
+async function requestOnce(path, options) {
+  return fetch(`${apiBase}${path}`, { credentials: 'include', ...options });
+}
+
 export async function api(path, options = {}) {
-  const token = getToken();
-  const response = await fetch(`${apiBase}${path}`, { ...options, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers } });
+  let response = await requestOnce(path, options);
+  // A single silent refresh+retry on an expired access token. Never for the
+  // refresh endpoint itself (it would loop), and only when we believe we have a
+  // session to refresh.
+  if (response.status === 401 && isSignedIn() && !path.startsWith('/api/auth/refresh')) {
+    if (await refreshSession()) response = await requestOnce(path, options);
+    else markSignedOut();
+  }
   if (response.status === 429) { const error = new Error('Too many requests. Please wait a few minutes and try again.'); error.status = 429; throw error; }
   if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Unable to reach the server. Please try again.');
   const data = await response.json();
@@ -31,7 +56,7 @@ export function localSet(key, value) { localStorage.setItem(key, JSON.stringify(
 // cards makes a single request instead of one /wishlist/check call per card.
 let wishlistIdsPromise = null;
 export function getWishlistIds() {
-  if (!getToken()) return Promise.resolve(new Set());
+  if (!isSignedIn()) return Promise.resolve(new Set());
   if (!wishlistIdsPromise) {
     wishlistIdsPromise = api('/api/wishlist')
       .then((data) => new Set((data.wishlist || []).map((book) => String(book._id))))
@@ -41,12 +66,14 @@ export function getWishlistIds() {
 }
 export function invalidateWishlistIds() { wishlistIdsPromise = null; }
 
+// Share a single in-flight /me request per session. Keyed by a session nonce
+// (bumped on sign-in/out) rather than a token value, which no longer exists.
 const accountRequests = new Map();
 export function getCurrentUser() {
-  const token = getToken();
-  if (!accountRequests.has(token)) {
-    const request = api('/api/auth/me').finally(() => accountRequests.delete(token));
-    accountRequests.set(token, request);
+  const key = sessionKey();
+  if (!accountRequests.has(key)) {
+    const request = api('/api/auth/me').finally(() => accountRequests.delete(key));
+    accountRequests.set(key, request);
   }
-  return accountRequests.get(token);
+  return accountRequests.get(key);
 }

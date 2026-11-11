@@ -44,23 +44,27 @@ const mapListing = (book) => ({
 const questions = [
   [
     'How do I request a book?',
-    'Open a reader listing and select Request exchange to message its owner.',
+    'Open any listing and choose Ask for exchange or borrow. If you are not signed in yet, a quick sign-in appears and brings you straight back to finish the request.',
   ],
   [
-    'Can I propose a book exchange?',
-    'Open a reader listing and send an exchange request to start a conversation.',
+    'What is the difference between an exchange and a borrow?',
+    'An exchange swaps one of your books for theirs — both are marked exchanged once the owner accepts. A borrow reserves the book for you to read and return later.',
   ],
   [
-    'Can I list one of my books?',
-    'Log in and choose List a book to create a listing.' ,
+    'Can I list one of my own books?',
+    'Yes. Choose List a book, add a few photos and an honest description, and your book joins the shelf for other readers to find.',
   ],
   [
-    'Are the conditions and photos real?',
-    'Every listing is provided by the reader who owns the book.',
+    'Is BetterReads free?',
+    'Listing, saving, and messaging are all free. BetterReads is readers passing good books to other readers, not a store.',
   ],
   [
-    'Are saved books kept?',
-    'Your saved books stay tied to your account across devices once you log in.',
+    'Do my saved books and account follow me?',
+    'Once you sign in, your wishlist, listings, and messages are tied to your account and stay with you across devices.',
+  ],
+  [
+    'What is my username for?',
+    'Your @username is how other readers recognise you across the community and on your profile. You choose a unique one when you join, and can change it anytime from your profile.',
   ],
 ];
 
@@ -339,28 +343,35 @@ export default function App() {
       </main>
 
       <footer className="bg-brand-olive text-brand-cream">
-        <div className="mx-auto grid max-w-[1390px] grid-cols-[1.4fr_0.8fr_0.8fr] gap-12 px-[5vw] py-12 max-md:grid-cols-1 max-md:gap-8">
-          <div>
-            <Brand light />
-            <p className="mt-3 text-sm text-brand-cream/80">
-              Good books deserve another chapter.<br />
-              <button className="mt-2 inline-flex items-center gap-1.5 font-medium text-brand-cream hover:underline" onClick={browseAll}>Browse books <ArrowUpRight size={14} /></button>
-            </p>
-          </div>
-          <nav className="flex flex-col gap-2 text-sm" aria-label="Browse BetterReads">
-            <span className="text-xs font-semibold tracking-[0.14em] text-brand-cream/60 uppercase">Find your way</span>
-            <a className="text-brand-cream/90 hover:text-brand-cream hover:underline" href={appPath('/books')}>All books</a>
-            <a className="text-brand-cream/90 hover:text-brand-cream hover:underline" href="#faq">Questions</a>
-          </nav>
-          <div className="flex flex-col gap-2 text-sm">
-            <span className="text-xs font-semibold tracking-[0.14em] text-brand-cream/60 uppercase">Your reading list</span>
-            <a className="text-brand-cream/90 hover:text-brand-cream hover:underline" href={appPath('/wishlist')}>Saved books</a>
-            <a className="inline-flex items-center gap-1.5 text-brand-cream/90 hover:text-brand-cream hover:underline" href="#top">Back to the top <ArrowUpRight size={14} /></a>
+        <div className="mx-auto max-w-[1390px] px-[5vw]">
+          {/* Brand + navigation */}
+          <div className="grid grid-cols-[1.6fr_1fr_1fr] gap-x-10 gap-y-8 py-12 max-md:grid-cols-2 max-sm:grid-cols-1 max-sm:py-10">
+            <div>
+              <Brand light />
+              <p className="mt-4 max-w-[34ch] text-sm leading-relaxed text-brand-cream/75">
+                A community of readers passing good books along — exchange, borrow, and find the story that stays with you.
+              </p>
+            </div>
+            <nav className="flex flex-col gap-3 text-sm" aria-label="Explore BetterReads">
+              <span className="text-xs font-semibold tracking-[0.14em] text-brand-cream/55 uppercase">Explore</span>
+              <a className="w-fit text-brand-cream/85 transition-colors hover:text-brand-cream" href={appPath('/books')}>All books</a>
+              <a className="w-fit text-brand-cream/85 transition-colors hover:text-brand-cream" href={appPath('/list-book')}>List a book</a>
+              <a className="w-fit text-brand-cream/85 transition-colors hover:text-brand-cream" href={appPath('/community')}>Community</a>
+              <a className="w-fit text-brand-cream/85 transition-colors hover:text-brand-cream" href="#faq">Questions</a>
+            </nav>
+            <nav className="flex flex-col gap-3 text-sm" aria-label="Your reading life">
+              <span className="text-xs font-semibold tracking-[0.14em] text-brand-cream/55 uppercase">Your shelf</span>
+              <a className="w-fit text-brand-cream/85 transition-colors hover:text-brand-cream" href={appPath('/wishlist')}>Saved books</a>
+              <a className="w-fit text-brand-cream/85 transition-colors hover:text-brand-cream" href={appPath('/readers/me')}>Your profile</a>
+              <a className="w-fit text-brand-cream/85 transition-colors hover:text-brand-cream" href={appPath('/inbox')}>Messages &amp; requests</a>
+            </nav>
           </div>
         </div>
-        <div className="mx-auto flex max-w-[1390px] flex-wrap justify-between gap-2 border-t border-brand-cream/15 px-[5vw] py-5 text-xs text-brand-cream/70">
-          <span>© {new Date().getFullYear()} BetterReads.</span>
-          <span>Read well. Pass it on.</span>
+        <div className="border-t border-brand-cream/15">
+          <div className="mx-auto flex max-w-[1390px] flex-wrap items-center justify-between gap-2 px-[5vw] py-6 text-xs text-brand-cream/60">
+            <span>© {new Date().getFullYear()} BetterReads · Good books, new beginnings.</span>
+            <a className="inline-flex items-center gap-1.5 transition-colors hover:text-brand-cream" href="#top">Back to the top <ArrowUpRight size={13} /></a>
+          </div>
         </div>
       </footer>
       <div className={cn('fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full bg-brand-olive px-4 py-2.5 text-sm text-brand-cream shadow-lg transition-opacity', toast ? 'opacity-100' : 'pointer-events-none opacity-0')} role="status" aria-live="polite">

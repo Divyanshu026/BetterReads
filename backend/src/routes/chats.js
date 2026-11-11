@@ -8,7 +8,7 @@ const {
   sendMessage,
   markAsRead,
 } = require('../controllers/chatsController');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireVerified } = require('../middleware/auth');
 
 // All chat routes require authentication
 router.use(requireAuth);
@@ -16,14 +16,14 @@ router.use(requireAuth);
 // GET /api/chats — list all chats for the current user
 router.get('/', listChats);
 
-// POST /api/chats — start a new chat
-router.post('/', createChat);
+// POST /api/chats — start a new chat (verified users only)
+router.post('/', requireVerified, createChat);
 
 // GET /api/chats/:id — get chat with message history
 router.get('/:id', getChat);
 
-// POST /api/chats/:id/messages — send a message
-router.post('/:id/messages', sendMessage);
+// POST /api/chats/:id/messages — send a message (verified users only)
+router.post('/:id/messages', requireVerified, sendMessage);
 
 // PATCH /api/chats/:id/read — mark messages as read
 router.patch('/:id/read', markAsRead);

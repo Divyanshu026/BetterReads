@@ -20,12 +20,18 @@ async function start() {
     passwordHash: await bcrypt.hash('demo-reader-2026', 10),
     bio: 'A sample bookshelf for exploring BetterReads. These are demo listings.',
     city: 'Bengaluru',
+    // Seeded accounts are pre-verified so the soft email-verification gate does
+    // not block the demo's offers/chat/checkout flows.
+    emailVerified: true,
+    emailVerifiedAt: new Date(),
   });
   await User.create({
     name: 'Demo Reader',
     email: 'reader@example.com',
     passwordHash: await bcrypt.hash('demo-reader-2026', 10),
     city: 'Delhi',
+    emailVerified: true,
+    emailVerifiedAt: new Date(),
   });
   const examples = [
     ['The Midnight Library', 'Matt Haig', 'Fiction', 29900, 'Like New', true, 'midnight'],

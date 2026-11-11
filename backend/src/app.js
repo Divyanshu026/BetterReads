@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const config = require('./config');
@@ -27,6 +28,10 @@ app.use(
   cors({
     origin: (origin, callback) =>
       callback(null, !origin || config.frontendOrigins.includes(origin)),
+    // Allow the browser to send/receive the auth cookies cross-origin. The
+    // origin callback reflects the specific request origin (never '*'), which
+    // credentialed CORS requires.
+    credentials: true,
     exposedHeaders: ['X-Total-Count'],
   }),
 );
@@ -39,6 +44,8 @@ app.post(
 app.use(express.json({ limit: '10mb' }));
 // Parse URL-encoded bodies (form submissions)
 app.use(express.urlencoded({ extended: true }));
+// Parse cookies so the auth middleware can read the httpOnly access/refresh cookies.
+app.use(cookieParser());
 
 // Serve uploaded files statically (fallback when Cloudinary not configured)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

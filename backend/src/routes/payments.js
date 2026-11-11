@@ -6,15 +6,15 @@ const {
   createCartCheckout,
   getPaymentStatus,
 } = require('../controllers/paymentsController');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireVerified } = require('../middleware/auth');
 
 // The signature-verified raw webhook is mounted before JSON parsing in app.js.
 
-// POST /api/payments/checkout — create checkout session (authenticated)
-router.post('/checkout', requireAuth, createCheckout);
+// POST /api/payments/checkout — create checkout session (verified users only)
+router.post('/checkout', requireAuth, requireVerified, createCheckout);
 
-// POST /api/payments/cart-checkout — create checkout session for cart items (authenticated)
-router.post('/cart-checkout', requireAuth, createCartCheckout);
+// POST /api/payments/cart-checkout — create checkout session for cart items (verified users only)
+router.post('/cart-checkout', requireAuth, requireVerified, createCartCheckout);
 
 // GET /api/payments/status/:offerId — check payment status (authenticated)
 router.get('/status/:offerId', requireAuth, getPaymentStatus);

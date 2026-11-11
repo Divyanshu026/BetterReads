@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { setToken } from '../services/auth.js';
+import { markSignedIn } from '../services/auth.js';
 import { apiBase } from '../services/api.js';
 import { googleClientId, renderGoogleButton } from '../services/google.js';
 import {
@@ -142,11 +142,66 @@ function OnboardingStep({ user, onComplete, prompt }) {
   );
 }
 
+// The password-reset request step. Always reports success (the server does not
+// reveal whether an address has an account), so the user is told to check their
+// inbox regardless.
+function ForgotPasswordForm({ onBack }) {
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+  const emailRef = useRef(null);
+  useEffect(() => { emailRef.current?.focus(); }, []);
+
+  async function submit(event) {
+    event.preventDefault();
+    if (busy) return;
+    setError('');
+    const email = String(new FormData(event.currentTarget).get('email')).trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Enter a valid email address.'); return; }
+    setBusy(true);
+    try {
+      const response = await fetch(`${apiBase}/api/auth/forgot-password`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      await readAccountResponse(response);
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof TypeError ? 'Unable to connect to the server. Please try again.' : err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (sent)
+    return (
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground">If an account exists for that email, we have sent a link to reset your password. The link expires in 1 hour. Check your inbox and spam folder.</p>
+        <Button type="button" variant="outline" className="w-full" onClick={onBack}>Back to log in</Button>
+      </div>
+    );
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+      <p className="text-sm text-muted-foreground">Enter the email for your account and we will send a link to reset your password.</p>
+      <FieldGroup>
+        <Field><FieldLabel htmlFor="forgot-email">Email</FieldLabel><Input ref={emailRef} id="forgot-email" name="email" type="email" autoComplete="email" inputMode="email" required /></Field>
+        {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+        <Button type="submit" className="w-full" disabled={busy}>{busy ? 'Sending…' : 'Send reset link'}</Button>
+        <Button type="button" variant="ghost" className="w-full" onClick={onBack}>Back to log in</Button>
+      </FieldGroup>
+    </form>
+  );
+}
+
 // The shared login / sign-up form. `onAuthenticated(data)` receives the server
 // payload ({ token, user, created }); the parent decides whether to show the
 // onboarding step or finish.
 function AuthForm({ initialMode = 'login', onAuthenticated }) {
   const [mode, setMode] = useState(initialMode === 'register' ? 'register' : 'login');
+  const [view, setView] = useState('auth'); // 'auth' | 'forgot'
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -190,13 +245,15 @@ function AuthForm({ initialMode = 'login', onAuthenticated }) {
     try {
       const response = await fetch(`${apiBase}/api/auth/google`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential }),
       });
       const data = await readAccountResponse(response);
-      if (typeof data.token !== 'string' || !data.user)
+      if (!data.user)
         throw new Error('The account server returned an invalid response. Please try again.');
-      setToken(data.token, true);
+      // The server set the httpOnly session cookies; record the local hint.
+      markSignedIn();
       onAuthenticated(data);
     } catch (err) {
       setError(err instanceof TypeError ? 'Unable to connect to the server. Please try again.' : err.message);
@@ -221,15 +278,19 @@ function AuthForm({ initialMode = 'login', onAuthenticated }) {
     if (mode === 'register') body.name = name;
     setBusy(true);
     try {
+      // `remember` controls the refresh-cookie lifetime server-side.
+      body.remember = form.has('remember');
       const response = await fetch(`${apiBase}/api/auth/${mode}`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       const data = await readAccountResponse(response);
-      if (typeof data.token !== 'string' || !data.user)
+      if (!data.user)
         throw new Error('The account server returned an invalid response. Please try again.');
-      setToken(data.token, form.has('remember'));
+      // The server set the httpOnly session cookies; record the local hint.
+      markSignedIn();
       onAuthenticated(data);
     } catch (err) {
       setError(err instanceof TypeError ? 'Unable to connect to the server. Please try again.' : err.message);
@@ -237,6 +298,8 @@ function AuthForm({ initialMode = 'login', onAuthenticated }) {
       setBusy(false);
     }
   }
+
+  if (view === 'forgot') return <ForgotPasswordForm onBack={() => { setView('auth'); setError(''); }} />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -265,7 +328,10 @@ function AuthForm({ initialMode = 'login', onAuthenticated }) {
             </div>
             {mode === 'register' && <FieldDescription>Use at least 8 characters.</FieldDescription>}
           </Field>
-          <Field orientation="horizontal"><input id="auth-remember" name="remember" type="checkbox" className="size-4 accent-primary" /><FieldLabel htmlFor="auth-remember" className="font-normal">Remember me</FieldLabel></Field>
+          <div className="flex items-center justify-between gap-3">
+            <Field orientation="horizontal" className="mb-0"><input id="auth-remember" name="remember" type="checkbox" className="size-4 accent-primary" /><FieldLabel htmlFor="auth-remember" className="font-normal">Remember me</FieldLabel></Field>
+            {mode === 'login' && <button type="button" className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={() => { setView('forgot'); setError(''); }}>Forgot password?</button>}
+          </div>
           {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
           <Button type="submit" className="w-full" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}</Button>
         </FieldGroup>

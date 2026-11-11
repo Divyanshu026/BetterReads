@@ -5,7 +5,6 @@ import WishlistButton from './components/WishlistButton.jsx';
 import ExchangeRequestModal from './components/ExchangeRequestModal.jsx';
 import Navbar from './components/Navbar.jsx';
 import { useAuth } from './services/AuthContext.jsx';
-import { getToken } from './services/auth.js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +16,8 @@ const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const photoUrl = (url) => url.startsWith('/uploads/') ? apiBase + url : url.startsWith('/covers/') ? appPath(url) : url;
 
 async function request(path, options = {}) {
-  const response = await fetch(`${apiBase}${path}`, options);
+  // Auth rides on the httpOnly cookie, so always include credentials.
+  const response = await fetch(`${apiBase}${path}`, { credentials: 'include', ...options });
   const type = response.headers.get('content-type') || '';
   if (!type.includes('application/json')) throw new Error('Unable to reach the server. Please try again.');
   const data = await response.json();
@@ -51,7 +51,7 @@ export default function BookDetailPage({ id }) {
   useEffect(() => {
     let active = true;
     if (!user || !id) { setRequestStatus(''); return () => { active = false; }; }
-    request(`/api/offers?listingId=${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${getToken()}` } })
+    request(`/api/offers?listingId=${encodeURIComponent(id)}`)
       .then((offers) => { if (active) { const mine = offers.find((offer) => String(offer.proposerId?._id || offer.proposerId) === String(user.id)); setRequestStatus(mine?.status || ''); } })
       .catch(() => {});
     return () => { active = false; };
@@ -61,7 +61,7 @@ export default function BookDetailPage({ id }) {
     if (!book?.ownerId?._id || String(book.ownerId._id) === String(currentUser.id) || chatBusy) return;
     setChatBusy(true); setChatError('');
     try {
-      const chat = await request('/api/chats', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ participantId: book.ownerId._id }) });
+      const chat = await request('/api/chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ participantId: book.ownerId._id }) });
       window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { chatId: chat._id, bookId: book._id } })); setChatBusy(false);
     } catch (err) { setChatError(err.message); setChatBusy(false); }
   }

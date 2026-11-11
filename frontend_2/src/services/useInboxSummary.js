@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, getToken, getCurrentUser } from './api.js';
+import { api, isSignedIn, getCurrentUser } from './api.js';
 export default function useInboxSummary() {
   const [summary, setSummary] = useState({ unread: null, pending: null });
   const refresh = useCallback(async () => {
-    if (!getToken()) { setSummary({ unread: 0, pending: 0 }); return; }
+    if (!isSignedIn()) { setSummary({ unread: 0, pending: 0 }); return; }
     try {
       const [{ user }, chats, offers] = await Promise.all([getCurrentUser(), api('/api/chats'), api('/api/offers')]);
       const details = await Promise.allSettled(chats.map((chat) => api(`/api/chats/${encodeURIComponent(chat._id)}`)));
