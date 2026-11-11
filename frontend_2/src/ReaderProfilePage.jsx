@@ -2,10 +2,10 @@ import { appPath } from './services/paths.js';
 import { useEffect, useState } from 'react';
 import { BookOpen, Calendar, MapPin, Pencil, Plus, Repeat, Star, Heart, MessageCircle, UserPlus, UserCheck } from 'lucide-react';
 import PageShell from './components/PageShell.jsx';
-import AccountPanel from './components/AccountPanel.jsx';
-import AuthLayout from './components/AuthLayout.jsx';
+import BrandAvatar from './components/BrandAvatar.jsx';
 import BookCard from './components/BookCard.jsx';
-import useReader from './services/useReader.js';
+import { useAuth } from './services/AuthContext.jsx';
+import { normalizeUsername, usernameError } from './services/username.js';
 import { api, getAllBooks, localGet, localSet, photoUrl } from './services/api.js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,17 +24,17 @@ const readImage = (file) => new Promise((resolve, reject) => { const reader = ne
 const memberSince = (iso) => { if (!iso) return ''; const date = new Date(iso); return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); };
 
 export default function ReaderProfilePage({ readerId, mine = false }) {
-  const { user, loading: authLoading, error: authError, refresh } = useReader();
+  const { user, loading: authLoading, error: authError, refresh, requireAuth, openAuth } = useAuth();
   const [profile, setProfile] = useState(null); const [books, setBooks] = useState([]); const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true); const [wishlistLoading, setWishlistLoading] = useState(false); const [wishlistError, setWishlistError] = useState('');
   const [error, setError] = useState(''); const [notice, setNotice] = useState(''); const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') || 'books'); const [offerCount, setOfferCount] = useState(null);
   const [editing, setEditing] = useState(() => new URLSearchParams(window.location.search).get('edit') === '1'); const [editBook, setEditBook] = useState(null); const [saving, setSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null); const [avatarPreview, setAvatarPreview] = useState('');
-  const [messaging, setMessaging] = useState(false); const [showAccount, setShowAccount] = useState(false);
+  const [messaging, setMessaging] = useState(false);
   const [localVersion, setLocalVersion] = useState(0); const [communityPosts, setCommunityPosts] = useState([]); const [communityError, setCommunityError] = useState('');
   const id = mine ? user?.id : readerId; const isMine = Boolean(user && String(user.id) === String(id));
-  const usernameKey = `betterreads.username.${id || ''}`; const followsKey = `betterreads.following.${user?.id || ''}`;
-  const username = isMine ? localGet(usernameKey, '') : '';
+  const followsKey = `betterreads.following.${user?.id || ''}`;
+  const username = profile?.username || '';
   const following = Boolean(user && localGet(followsKey, []).includes(id));
   const activity = communityPosts.map((post) => ({ id: post._id, type: 'Discussion', text: post.title, date: post.createdAt }));
   const visibleBooks = isMine ? books : books.filter((book) => ['available', 'reserved', 'borrowed'].includes(book.status));
@@ -48,10 +48,10 @@ export default function ReaderProfilePage({ readerId, mine = false }) {
   function chooseTab(value) { setTab(value); const url = new URL(window.location.href); if (value === 'books') url.searchParams.delete('tab'); else url.searchParams.set('tab', value); window.history.pushState({}, '', url); }
   useEffect(() => { const update = () => setLocalVersion((value) => value + 1); window.addEventListener('betterreads:local-change', update); return () => window.removeEventListener('betterreads:local-change', update); }, []);
   useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); }, [avatarPreview]);
-  async function messageReader() { if (!user) { setShowAccount(true); return; } setMessaging(true); setError(''); try { const chat = await api('/api/chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ participantId: id }) }); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { chatId: chat._id } })); setMessaging(false); } catch (err) { setError(err.message); setMessaging(false); } }
-  function toggleFollow() { if (!user) { setShowAccount(true); return; } const list = localGet(followsKey, []); localSet(followsKey, following ? list.filter((value) => value !== id) : [...list, id]); }
+  function messageReader() { requireAuth(async () => { setMessaging(true); setError(''); try { const chat = await api('/api/chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ participantId: id }) }); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { chatId: chat._id } })); setMessaging(false); } catch (err) { setError(err.message); setMessaging(false); } }, { mode: 'login', prompt: 'Log in to message this reader.' }); }
+  function toggleFollow() { requireAuth(() => { const list = localGet(followsKey, []); localSet(followsKey, following ? list.filter((value) => value !== id) : [...list, id]); }, { mode: 'login', prompt: 'Log in to follow readers.' }); }
   function selectAvatar(event) { const file = event.target.files?.[0]; setError(''); if (!file) return; if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || !file.size || file.size > 5 * 1024 * 1024) { setError('Choose a JPEG, PNG, or WebP image up to 5 MB.'); event.target.value = ''; return; } setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file)); }
-  async function saveProfile(event) { event.preventDefault(); if (saving) return; const form = new FormData(event.currentTarget); const name = String(form.get('name')).trim(); const handle = String(form.get('username')).trim().replace(/^@/, ''); if (!name || (handle && !/^[a-zA-Z0-9_.]{3,30}$/.test(handle))) { setError('Enter a name and a username of 3–30 letters, numbers, dots or underscores.'); return; } setSaving(true); setError(''); try { let avatarUrl = profile.avatarUrl || ''; if (avatarFile) { const upload = await api('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: await readImage(avatarFile) }) }); if (!upload.url) throw new Error('Unable to upload your avatar.'); avatarUrl = upload.url; } const data = await api(`/api/users/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, bio: String(form.get('bio')).trim(), city: String(form.get('city')).trim(), genres: String(form.get('genres')).split(',').map((g) => g.trim()).filter(Boolean), avatarUrl }) }); setProfile(data.user); window.dispatchEvent(new Event('betterreads:profile-change')); localSet(usernameKey, handle); setAvatarFile(null); setAvatarPreview(''); setEditing(false); setNotice('Profile updated.'); } catch (err) { setError(err.message); } finally { setSaving(false); } }
+  async function saveProfile(event) { event.preventDefault(); if (saving) return; const form = new FormData(event.currentTarget); const name = String(form.get('name')).trim(); const handle = normalizeUsername(form.get('username')); if (!name) { setError('Enter your name.'); return; } const handleProblem = usernameError(handle); if (handleProblem) { setError(handleProblem); return; } setSaving(true); setError(''); try { let avatarUrl = profile.avatarUrl || ''; if (avatarFile) { const upload = await api('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: await readImage(avatarFile) }) }); if (!upload.url) throw new Error('Unable to upload your avatar.'); avatarUrl = upload.url; } const data = await api(`/api/users/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, username: handle, bio: String(form.get('bio')).trim(), city: String(form.get('city')).trim(), genres: String(form.get('genres')).split(',').map((g) => g.trim()).filter(Boolean), avatarUrl }) }); setProfile(data.user); window.dispatchEvent(new Event('betterreads:profile-change')); setAvatarFile(null); setAvatarPreview(''); setEditing(false); setNotice('Profile updated.'); } catch (err) { setError(err.message); } finally { setSaving(false); } }
   async function saveBook(event) { event.preventDefault(); const form = new FormData(event.currentTarget); try { await api(`/api/books/${encodeURIComponent(editBook._id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: String(form.get('title')).trim(), author: String(form.get('author')).trim(), genre: String(form.get('genre')).trim(), condition: form.get('condition'), city: String(form.get('city')).trim(), description: String(form.get('description')).trim(), barterAvailable: form.has('barter'), borrowAvailable: form.has('borrow') }) }); setEditBook(null); await loadBooks(); setNotice('Listing updated.'); } catch (err) { setError(err.message); } }
   async function deleteBook(book) { if (!window.confirm(`Delete “${book.title}”?`)) return; try { await api(`/api/books/${encodeURIComponent(book._id)}`, { method: 'DELETE' }); await loadBooks(); setNotice('Listing deleted.'); } catch (err) { setError(err.message); } }
   const tabs = isMine ? [['books', 'Bookshelf'], ['activity', 'Activity'], ['about', 'About']] : [['books', 'Bookshelf'], ['posts', 'Community posts'], ['about', 'About']];
@@ -73,7 +73,7 @@ export default function ReaderProfilePage({ readerId, mine = false }) {
     <main className="mx-auto max-w-[1040px] px-6 py-8 max-sm:px-4 max-sm:py-6">
       {authLoading || (id && loading) ? <div role="status" className="py-14 text-muted-foreground">Loading reader profile…</div>
         : mine && authError && !user ? <div role="alert" className="flex flex-col items-start gap-3 py-14"><p className="text-muted-foreground">{authError}</p><Button variant="outline" onClick={refresh}>Try again</Button></div>
-        : mine && !user ? <div className="py-6"><AuthLayout><AccountPanel onAuthenticated={refresh} /></AuthLayout></div>
+        : mine && !user ? <div className="flex flex-col items-center justify-center gap-4 py-14 text-center"><div><h1 className="font-heading text-2xl font-bold tracking-tight">Your reader profile</h1><p className="mt-1 max-w-sm text-sm text-muted-foreground">Log in to view and edit your profile.</p></div><Button onClick={() => openAuth('login', 'Log in to open your profile.')}>Log in or sign up</Button></div>
         : !profile ? <div role="alert" className="flex flex-col items-start gap-3 py-14"><p className="text-muted-foreground">{error || 'Reader not found.'}</p><Button asChild variant="outline"><a href={appPath('/books')}>Back to books</a></Button></div>
         : <>
 
@@ -82,10 +82,7 @@ export default function ReaderProfilePage({ readerId, mine = false }) {
         <CardContent className="flex flex-col gap-4">
           <div className="flex items-end justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
             <div className="flex items-end gap-4 max-sm:items-center">
-              <Avatar className="-mt-12 size-24 ring-4 ring-card max-sm:-mt-10 max-sm:size-20">
-                <AvatarImage src={profile.avatarUrl ? photoUrl(profile.avatarUrl) : undefined} alt="" />
-                <AvatarFallback className="text-3xl">{(profile.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
-              </Avatar>
+              <BrandAvatar user={profile} className="-mt-12 size-24 ring-4 ring-card max-sm:-mt-10 max-sm:size-20" fallbackClassName="text-3xl" />
               <div className="min-w-0 pb-1">
                 <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{isMine ? 'Your reading life' : 'Reader profile'}</span>
                 <h1 className="font-heading text-3xl leading-tight font-bold tracking-tight break-words">{profile.name || 'Reader'}</h1>
@@ -152,7 +149,8 @@ export default function ReaderProfilePage({ readerId, mine = false }) {
                     </Field>
                     <Field>
                       <FieldLabel htmlFor="pf-username">Username</FieldLabel>
-                      <Input id="pf-username" name="username" defaultValue={username} maxLength={30} autoComplete="off" placeholder="your-handle" />
+                      <Input id="pf-username" name="username" defaultValue={username} minLength={3} maxLength={30} autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="your-handle" required />
+                      <FieldDescription>3–30 letters, numbers, dots or underscores.</FieldDescription>
                     </Field>
                   </div>
                   <Field>
@@ -182,8 +180,6 @@ export default function ReaderProfilePage({ readerId, mine = false }) {
           </DialogContent>
         </Dialog>
       )}
-
-      {showAccount && <Card className="mt-4"><CardContent><h2 className="mb-4 font-heading text-lg font-medium">Log in to connect</h2><AccountPanel onAuthenticated={() => { setShowAccount(false); refresh(); }} /><Button variant="ghost" size="sm" className="mt-3" onClick={() => setShowAccount(false)}>Close</Button></CardContent></Card>}
 
       <Tabs value={currentTab} onValueChange={chooseTab} className="mt-7">
         <TabsList aria-label="Profile sections">{tabs.map(([key, label]) => <TabsTrigger key={key} value={key}>{label}</TabsTrigger>)}</TabsList>

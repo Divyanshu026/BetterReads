@@ -4,7 +4,7 @@ import { MessageCircle, Repeat } from 'lucide-react';
 import WishlistButton from './components/WishlistButton.jsx';
 import ExchangeRequestModal from './components/ExchangeRequestModal.jsx';
 import Navbar from './components/Navbar.jsx';
-import AccountPanel from './components/AccountPanel.jsx';
+import { useAuth } from './services/AuthContext.jsx';
 import { getToken } from './services/auth.js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,12 +26,10 @@ async function request(path, options = {}) {
 }
 
 export default function BookDetailPage({ id }) {
+  const { user, requireAuth } = useAuth();
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [user, setUser] = useState(null);
-  const [authVersion, setAuthVersion] = useState(0);
-  const [showAccount, setShowAccount] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [showRequest, setShowRequest] = useState(false);
   const [requestExplanation, setRequestExplanation] = useState(false);
@@ -52,17 +50,6 @@ export default function BookDetailPage({ id }) {
 
   useEffect(() => {
     let active = true;
-    const token = getToken();
-    if (!token) { setUser(null); return () => { active = false; }; }
-    request('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then((data) => { if (active) setUser(data.user); })
-      .catch(() => { if (active) setUser(null); });
-    return () => { active = false; };
-  }, [authVersion]);
-
-
-  useEffect(() => {
-    let active = true;
     if (!user || !id) { setRequestStatus(''); return () => { active = false; }; }
     request(`/api/offers?listingId=${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${getToken()}` } })
       .then((offers) => { if (active) { const mine = offers.find((offer) => String(offer.proposerId?._id || offer.proposerId) === String(user.id)); setRequestStatus(mine?.status || ''); } })
@@ -70,14 +57,17 @@ export default function BookDetailPage({ id }) {
     return () => { active = false; };
   }, [id, user]);
 
-  async function openChat() {
-    if (!user) { setShowAccount(true); return; }
-    if (!book?.ownerId?._id || String(book.ownerId._id) === String(user.id) || chatBusy) return;
+  async function startChat(currentUser) {
+    if (!book?.ownerId?._id || String(book.ownerId._id) === String(currentUser.id) || chatBusy) return;
     setChatBusy(true); setChatError('');
     try {
       const chat = await request('/api/chats', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ participantId: book.ownerId._id }) });
       window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { chatId: chat._id, bookId: book._id } })); setChatBusy(false);
     } catch (err) { setChatError(err.message); setChatBusy(false); }
+  }
+  // Guests get the shared auth modal; the chat opens once signed in.
+  function openChat() {
+    requireAuth((currentUser) => startChat(currentUser), { mode: 'login', prompt: 'Log in to message this reader.' });
   }
 
   const images = book ? (book.photos?.length ? book.photos.map(photoUrl) : [appPath('/covers/placeholder.svg')]) : [];
@@ -121,15 +111,14 @@ export default function BookDetailPage({ id }) {
               {book.status !== 'available' && <p className="text-sm text-muted-foreground">This book is currently {book.status}.</p>}
               <Separator />
               <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" disabled={book.status !== 'available' || !ownerId || isOwner || requestStatus === 'pending' || requestStatus === 'accepted'} onClick={() => { if (!book.barterAvailable && !book.borrowAvailable) { setRequestExplanation(true); return; } setRequestExplanation(false); if (user) setShowRequest(true); else setShowAccount(true); }}><Repeat data-icon="inline-start" />{isOwner ? 'Your listing' : requestStatus === 'pending' ? 'Request pending' : requestStatus === 'accepted' ? 'Request accepted' : 'Ask for exchange or borrow'}</Button>
-                <WishlistButton bookId={book._id} onSignIn={() => setShowAccount(true)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted aria-pressed:text-destructive disabled:opacity-50" />
+                <Button type="button" disabled={book.status !== 'available' || !ownerId || isOwner || requestStatus === 'pending' || requestStatus === 'accepted'} onClick={() => { if (!book.barterAvailable && !book.borrowAvailable) { setRequestExplanation(true); return; } setRequestExplanation(false); requireAuth(() => setShowRequest(true), { mode: 'login', prompt: 'Log in to request this book.' }); }}><Repeat data-icon="inline-start" />{isOwner ? 'Your listing' : requestStatus === 'pending' ? 'Request pending' : requestStatus === 'accepted' ? 'Request accepted' : 'Ask for exchange or borrow'}</Button>
+                <WishlistButton bookId={book._id} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted aria-pressed:text-destructive disabled:opacity-50" />
                 <Button type="button" variant="outline" disabled={!ownerId || isOwner || chatBusy} onClick={openChat}><MessageCircle data-icon="inline-start" />{isOwner ? 'Your listing' : chatBusy ? 'Opening…' : 'Message lister'}</Button>
               </div>
               {requestExplanation && <p className="text-sm text-muted-foreground" role="status">The owner has not offered this book for exchange or borrowing yet. <button type="button" className="font-medium text-foreground hover:underline" onClick={openChat}>Message the lister</button> to ask about it.</p>}
               {!user && <p className="text-sm text-muted-foreground">Sign in to save books and exchange requests to your account.</p>}
               {requestNotice && <div role="status" className="rounded-lg border border-border bg-muted px-4 py-3 text-sm">{requestNotice} <button type="button" className="font-medium hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } }))}>View requests</button></div>}
-              {showRequest && <ExchangeRequestModal book={book} user={user} onClose={() => setShowRequest(false)} onCreated={(_offer, warning) => { setShowRequest(false); setRequestStatus('pending'); setRequestNotice(warning || 'Request sent.'); }} />}
-              {showAccount && <Card aria-label="Log in or sign up"><CardContent><h2 className="font-heading text-lg font-medium">Log in to message</h2><p className="mt-1 text-sm text-muted-foreground">After signing in, choose an action to continue.</p><div className="mt-3"><AccountPanel onAuthenticated={() => { setShowAccount(false); setAuthVersion((n) => n + 1); }} /></div><Button type="button" variant="ghost" size="sm" className="mt-3" onClick={() => setShowAccount(false)}>Close</Button></CardContent></Card>}
+              {showRequest && user && <ExchangeRequestModal book={book} user={user} onClose={() => setShowRequest(false)} onCreated={(_offer, warning) => { setShowRequest(false); setRequestStatus('pending'); setRequestNotice(warning || 'Request sent.'); }} />}
               {chatError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{chatError}</div>}
             </section>
           </div>

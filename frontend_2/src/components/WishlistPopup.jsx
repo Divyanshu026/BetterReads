@@ -1,9 +1,8 @@
 import { appPath } from '../services/paths.js';
 import { useEffect, useRef, useState } from 'react';
 import { Heart } from 'lucide-react';
-import AccountPanel from './AccountPanel.jsx';
 import WishlistButton from './WishlistButton.jsx';
-import useReader from '../services/useReader.js';
+import { useAuth } from '../services/AuthContext.jsx';
 import { api, photoUrl } from '../services/api.js';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +27,7 @@ import {
 
 export default function WishlistPopup() {
   const [open, setOpen] = useState(false);
-  const { user, loading, refresh } = useReader();
+  const { user, loading, openAuth } = useAuth();
   const [items, setItems] = useState([]);
   const [error, setError] = useState('');
   const [fetching, setFetching] = useState(false);
@@ -121,9 +120,9 @@ export default function WishlistPopup() {
               ))}
             </ul>
           ) : !user ? (
-            <div className="flex flex-col gap-3 p-4">
+            <div className="flex flex-col items-start gap-3 p-4">
               <p className="text-sm text-muted-foreground">Log in to keep a wishlist of reader listings across your devices.</p>
-              <AccountPanel onAuthenticated={refresh} />
+              <Button size="sm" onClick={() => { setOpen(false); openAuth('login', 'Log in to save and sync your wishlist.'); }}>Log in or sign up</Button>
             </div>
           ) : error ? (
             <Empty className="gap-3 p-6">
@@ -174,7 +173,6 @@ export default function WishlistPopup() {
                     bookId={book._id}
                     iconOnly
                     className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background hover:text-destructive aria-pressed:text-destructive"
-                    onSignIn={refresh}
                     onChange={bump}
                   />
                 </li>

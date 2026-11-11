@@ -6,6 +6,18 @@ const UserSchema = new mongoose.Schema(
   {
     // Unique email used for login and identification
     email: { type: String, required: true, unique: true },
+    // Unique handle shown as @username. Stored normalized (lowercased); a unique
+    // index enforces uniqueness at the database level so concurrent signups can
+    // never create two of the same. Sparse so legacy users without one (pending
+    // migration) don't collide on null.
+    username: {
+      type: String,
+      unique: true,
+      sparse: true,
+      minlength: 3,
+      maxlength: 30,
+      match: /^[a-z0-9]([a-z0-9._]*[a-z0-9])?$/,
+    },
     // Hashed password (bcrypt). Plaintext is never stored. Optional for social accounts.
     passwordHash: { type: String },
     // Google account subject id, set for users who signed in with Google.

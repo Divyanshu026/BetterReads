@@ -1,14 +1,13 @@
 import { appPath, currentPath } from '../services/paths.js';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BookOpen, ChevronsUpDown, LogIn, LogOut, Menu, UserRound, X } from 'lucide-react';
 import InboxLink from './InboxLink.jsx';
 import WishlistPopup from './WishlistPopup.jsx';
-import useReader from '../services/useReader.js';
-import { clearToken } from '../services/auth.js';
+import BrandAvatar from './BrandAvatar.jsx';
+import { useAuth } from '../services/AuthContext.jsx';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup,
   DropdownMenuItem, DropdownMenuSeparator,
@@ -16,14 +15,9 @@ import {
 
 const links = [['Home', '/'], ['Browse books', '/books'], ['List a book', '/list-book'], ['Community', '/community']];
 
-const avatarFor = (user) => {
-  const seed = encodeURIComponent(String(user?.id || user?.email || user?.name || 'reader'));
-  return `https://api.dicebear.com/9.x/thumbs/svg?seed=${seed}&backgroundColor=1e293b,0f172a,334155,27272a,18181b&shapeColor=f1f5f9,e2e8f0,cbd5e1,fef3c7`;
-};
-
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const { user } = useReader();
+  const { user, openAuth, logout } = useAuth();
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     let previous = window.scrollY;
@@ -76,53 +70,59 @@ export default function Navbar() {
         <div className="ml-auto flex items-center gap-1">
           <InboxLink />
           <WishlistPopup />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              {user ? (
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-8 gap-1.5 rounded-full pr-2.5 pl-1"
-                  aria-label="Account menu"
+                  aria-label={`Account menu for ${user.username ? `@${user.username}` : user.name || 'your account'}`}
                   aria-current={path.startsWith('/readers') ? 'page' : undefined}
                 >
-                  <Avatar className="size-6 border border-background">
-                    <AvatarImage src={avatarFor(user)} alt="" />
-                    <AvatarFallback>{(user.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <span className="max-w-[10ch] truncate text-xs font-medium">{user.name || 'Reader'}</span>
+                  <BrandAvatar user={user} className="size-6 border border-background" fallbackClassName="text-[10px]" />
+                  <span className="max-w-[12ch] truncate text-xs font-medium">{user.username ? `@${user.username}` : user.name || 'Reader'}</span>
                   <ChevronsUpDown className="size-3.5 opacity-60" aria-hidden="true" />
                 </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Log in or sign up"
-                  className="rounded-full"
-                >
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52" sideOffset={8}>
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  <BrandAvatar user={user} className="size-8" fallbackClassName="text-xs" />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-medium">{user.name || 'Reader'}</span>
+                    {user.username && <span className="truncate text-xs text-muted-foreground">@{user.username}</span>}
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <a href={appPath('/readers/me')}><UserRound aria-hidden="true" /> Profile &amp; listings</a>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'messages' } }))}>
+                  <BookOpen aria-hidden="true" /> Messages &amp; requests
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onSelect={() => logout()}>
+                  <LogOut aria-hidden="true" /> Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Account" className="rounded-full">
                   <UserRound />
                 </Button>
-              )}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44" sideOffset={8}>
-              {user ? (
-                <>
-                  <DropdownMenuItem asChild>
-                    <a href={appPath('/readers/me')}><UserRound aria-hidden="true" /> Profile</a>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onSelect={() => clearToken()}>
-                    <LogOut aria-hidden="true" /> Log out
-                  </DropdownMenuItem>
-                </>
-              ) : (
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44" sideOffset={8}>
                 <DropdownMenuGroup>
-                  <DropdownMenuItem asChild><a href={appPath('/readers/me')}><LogIn /> Log in or sign up</a></DropdownMenuItem>
-                  <DropdownMenuItem asChild><a href={appPath('/books')}><BookOpen /> Browse books</a></DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => openAuth('login')}><LogIn aria-hidden="true" /> Log in</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => openAuth('register')}><UserRound aria-hidden="true" /> Sign up</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild><a href={appPath('/books')}><BookOpen aria-hidden="true" /> Browse books</a></DropdownMenuItem>
                 </DropdownMenuGroup>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           <Button
             variant="ghost"
@@ -145,13 +145,24 @@ export default function Navbar() {
           className="fixed inset-x-0 top-[72px] z-40 flex flex-col border-b border-border bg-background p-2 shadow-lg md:hidden"
         >
           {navLinks(
-            [...links, ['Profile', '/readers/me']],
+            user ? [...links, ['Profile', '/readers/me']] : links,
             'rounded-md px-3 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted aria-[current=page]:bg-muted',
           )}
           <Separator className="my-1" />
-          <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'messages' } })); }}>Messages</button>
-          <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } })); }}>Notifications & requests</button>
-          <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-wishlist')); }}>Wishlist</button>
+          {user ? (
+            <>
+              <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'messages' } })); }}>Messages</button>
+              <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } })); }}>Notifications & requests</button>
+              <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-wishlist')); }}>Wishlist</button>
+              <Separator className="my-1" />
+              <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-destructive transition-colors hover:bg-muted" onClick={() => { setOpen(false); logout(); }}>Log out</button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); openAuth('login'); }}>Log in</button>
+              <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); openAuth('register'); }}>Sign up</button>
+            </>
+          )}
         </nav>
       )}
     </>

@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "lint": "eslint src tests --ext .js",
     "test": "jest --runInBand",
-    "demo": "node src/demo.js"
+    "demo": "node src/demo.js",
+    "backfill:usernames": "node src/scripts/backfill-usernames.js"
   },
   "keywords": [],
   "author": "",

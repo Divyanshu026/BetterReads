@@ -3,16 +3,15 @@ import { useEffect, useState } from 'react';
 import { ArrowUp, ArrowDown, BookText, MapPin, MessageCircle, PenSquare, Search, Share2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import PageShell from './components/PageShell.jsx';
-import AccountPanel from './components/AccountPanel.jsx';
-import useReader from './services/useReader.js';
-import { api, photoUrl } from './services/api.js';
+import BrandAvatar from './components/BrandAvatar.jsx';
+import { useAuth } from './services/AuthContext.jsx';
+import { api } from './services/api.js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from '@/components/ui/select';
 import { FieldGroup, Field, FieldLabel } from '@/components/ui/field';
@@ -24,7 +23,7 @@ const categories = ['General Discussion', 'Book Recommendations', 'Currently Rea
 const json = (body) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
 export default function CommunityPage() {
-  const { user, loading: accountLoading, refresh } = useReader();
+  const { user, requireAuth } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -105,22 +104,23 @@ export default function CommunityPage() {
     } catch (err) { toast.error(err.message); } finally { setBusy(''); }
   }
 
-  async function like(post) {
-    if (!user || busy) { if (!user) setError('Log in to appreciate a discussion.'); return; }
-    const liked = (post.likes || []).some((id) => String(id) === String(user.id));
-    setBusy(post._id); setError('');
-    try {
-      const data = await api(`/api/community/posts/${post._id}/like`, { method: 'PUT', ...json({ liked: !liked }) });
-      setPosts((old) => old.map((item) => item._id === post._id ? { ...item, likes: data.liked ? [...(item.likes || []), user.id] : (item.likes || []).filter((id) => String(id) !== String(user.id)) } : item));
-    } catch (err) { setError(err.message); } finally { setBusy(''); }
+  function like(post) {
+    requireAuth((currentUser) => {
+      if (busy) return;
+      const liked = (post.likes || []).some((id) => String(id) === String(currentUser.id));
+      setBusy(post._id); setError('');
+      api(`/api/community/posts/${post._id}/like`, { method: 'PUT', ...json({ liked: !liked }) })
+        .then((data) => setPosts((old) => old.map((item) => item._id === post._id ? { ...item, likes: data.liked ? [...(item.likes || []), currentUser.id] : (item.likes || []).filter((id) => String(id) !== String(currentUser.id)) } : item)))
+        .catch((err) => setError(err.message))
+        .finally(() => setBusy(''));
+    }, { mode: 'login', prompt: 'Log in to appreciate a discussion.' });
   }
 
   const q = search.trim().toLowerCase();
   const shown = posts.filter((post) => `${post.title} ${post.body} ${post.author?.name || ''}`.toLowerCase().includes(q));
 
   function openComposer() {
-    if (!user) { setError('Log in to start a discussion.'); return; }
-    setComposerOpen(true);
+    requireAuth(() => setComposerOpen(true), { mode: 'login', prompt: 'Log in to start a discussion.' });
   }
 
   return (
@@ -140,13 +140,10 @@ export default function CommunityPage() {
                       className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-muted/60"
                       aria-label="View your profile"
                     >
-                      <Avatar className="size-10">
-                        <AvatarImage src={user.avatarUrl ? photoUrl(user.avatarUrl) : undefined} alt="" />
-                        <AvatarFallback>{(user.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                      <BrandAvatar user={user} className="size-10" />
                       <span className="flex min-w-0 flex-col">
                         <span className="truncate text-sm font-semibold">{user.name || 'Reader'}</span>
-                        <span className="truncate text-xs text-muted-foreground">View your profile</span>
+                        <span className="truncate text-xs text-muted-foreground">{user.username ? `@${user.username}` : 'View your profile'}</span>
                       </span>
                     </a>
                     <Separator />
@@ -211,10 +208,7 @@ export default function CommunityPage() {
                     onClick={openComposer}
                     className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted"
                   >
-                    <Avatar className="size-8">
-                      <AvatarImage src={user.avatarUrl ? photoUrl(user.avatarUrl) : undefined} alt="" />
-                      <AvatarFallback className="text-xs font-semibold">{(user.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                    <BrandAvatar user={user} className="size-8" fallbackClassName="text-xs" />
                     <span className="flex-1 truncate">Share something with the community…</span>
                     <PenSquare className="size-4" aria-hidden="true" />
                   </button>
@@ -243,12 +237,9 @@ export default function CommunityPage() {
                       return (
                         <article key={post._id} className="flex flex-col gap-3 rounded-xl px-2 py-4 transition-colors hover:bg-muted/30">
                           <header className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                            <Avatar className="size-8">
-                              <AvatarImage src={post.author?.avatarUrl ? photoUrl(post.author.avatarUrl) : undefined} alt="" />
-                              <AvatarFallback className="text-xs font-semibold">{(post.author?.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
-                            </Avatar>
+                            <BrandAvatar user={post.author} className="size-8" fallbackClassName="text-xs" />
                             <a className="truncate font-medium hover:underline" href={appPath(`/readers/${post.author?._id}`)}>
-                              u/{(post.author?.name || 'reader').replace(/\s+/g, '').toLowerCase()}
+                              {post.author?.username ? `@${post.author.username}` : `u/${(post.author?.name || 'reader').replace(/\s+/g, '').toLowerCase()}`}
                             </a>
                             <span className="text-muted-foreground">·</span>
                             <span className="text-muted-foreground">{new Date(post.createdAt).toLocaleDateString()}</span>
@@ -302,13 +293,10 @@ export default function CommunityPage() {
                               ) : comments[post._id].length ? (
                                 comments[post._id].map((entry) => (
                                   <div className="flex gap-2 text-sm" key={entry._id}>
-                                    <Avatar className="size-7">
-                                      <AvatarImage src={entry.author?.avatarUrl ? photoUrl(entry.author.avatarUrl) : undefined} alt="" />
-                                      <AvatarFallback className="text-xs font-semibold">{(entry.author?.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
-                                    </Avatar>
+                                    <BrandAvatar user={entry.author} className="size-7" fallbackClassName="text-xs" />
                                     <div className="min-w-0 flex-1">
                                       <a className="font-medium hover:underline" href={appPath(`/readers/${entry.author?._id}`)}>
-                                        u/{(entry.author?.name || 'reader').replace(/\s+/g, '').toLowerCase()}
+                                        {entry.author?.username ? `@${entry.author.username}` : `u/${(entry.author?.name || 'reader').replace(/\s+/g, '').toLowerCase()}`}
                                       </a>
                                       <p className="mt-1 whitespace-pre-wrap text-foreground/90">{entry.body}</p>
                                     </div>
@@ -342,7 +330,7 @@ export default function CommunityPage() {
                                   </FieldGroup>
                                 </form>
                               ) : (
-                                <p className="text-sm text-muted-foreground">Log in to reply.</p>
+                                <Button type="button" variant="outline" size="sm" className="self-start" onClick={() => requireAuth(() => {}, { mode: 'login', prompt: 'Log in to reply to this discussion.' })}>Log in to reply</Button>
                               )}
                             </div>
                           )}
@@ -370,43 +358,35 @@ export default function CommunityPage() {
               <DialogTitle className="font-heading text-lg font-semibold">Start a discussion</DialogTitle>
               <DialogDescription>Ask a question, share a favourite, or find your next read.</DialogDescription>
             </DialogHeader>
-            {accountLoading ? (
-              <p className="p-5 text-sm text-muted-foreground">Loading account…</p>
-            ) : user ? (
-              <form onSubmit={publish} className="flex min-h-0 flex-1 flex-col">
-                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-                  <FieldGroup>
-                    <Field>
-                      <FieldLabel htmlFor="c-title">Title</FieldLabel>
-                      <Input id="c-title" name="title" maxLength={150} required placeholder="What's on your mind?" />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="c-category">Topic</FieldLabel>
-                      <Select name="category" defaultValue={categories[0]}>
-                        <SelectTrigger id="c-category" className="w-full"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {categories.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="c-body">Your thoughts</FieldLabel>
-                      <Textarea id="c-body" name="body" rows={6} maxLength={3000} required placeholder="Share with the community..." />
-                    </Field>
-                  </FieldGroup>
-                </div>
-                <DialogFooter className="-mx-0 -mb-0 mt-0 flex flex-row items-center justify-end gap-2 border-t bg-muted/50 px-5 py-3 sm:flex-row">
-                  <Button type="button" variant="outline" onClick={() => setComposerOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={!!busy}>{busy === 'publish' ? 'Publishing…' : 'Publish discussion'}</Button>
-                </DialogFooter>
-              </form>
-            ) : (
-              <div className="p-5">
-                <AccountPanel onAuthenticated={refresh} />
+            <form onSubmit={publish} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="c-title">Title</FieldLabel>
+                    <Input id="c-title" name="title" maxLength={150} required placeholder="What's on your mind?" />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="c-category">Topic</FieldLabel>
+                    <Select name="category" defaultValue={categories[0]}>
+                      <SelectTrigger id="c-category" className="w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {categories.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="c-body">Your thoughts</FieldLabel>
+                    <Textarea id="c-body" name="body" rows={6} maxLength={3000} required placeholder="Share with the community..." />
+                  </Field>
+                </FieldGroup>
               </div>
-            )}
+              <DialogFooter className="-mx-0 -mb-0 mt-0 flex flex-row items-center justify-end gap-2 border-t bg-muted/50 px-5 py-3 sm:flex-row">
+                <Button type="button" variant="outline" onClick={() => setComposerOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={!!busy}>{busy === 'publish' ? 'Publishing…' : 'Publish discussion'}</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </main>
