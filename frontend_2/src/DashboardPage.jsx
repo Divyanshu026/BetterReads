@@ -2,10 +2,10 @@ import { appPath } from './services/paths.js';
 import { useEffect, useState } from 'react';
 import { BookOpen, BookCheck, Repeat, Heart, MessageSquare, Bell, Plus, Sun, Moon, ArrowUpRight, MapPin, Calendar, Pencil, AlertTriangle } from 'lucide-react';
 import PageShell from './components/PageShell.jsx';
-import AccountPanel from './components/AccountPanel.jsx';
-import AuthLayout from './components/AuthLayout.jsx';
-import useReader from './services/useReader.js';
+import BrandAvatar from './components/BrandAvatar.jsx';
+import { useAuth } from './services/AuthContext.jsx';
 import useInboxSummary from './services/useInboxSummary.js';
+import { normalizeUsername, usernameError } from './services/username.js';
 import { api, getAllBooks, localGet, localSet, photoUrl } from './services/api.js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,7 @@ const num = (v) => (v === null || v === undefined ? '—' : v);
 const readImage = (file) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Could not read this photo.')); reader.readAsDataURL(file); });
 
 export default function DashboardPage() {
-  const { user, loading: authLoading, error: authError, refresh } = useReader();
+  const { user, loading: authLoading, error: authError, refresh, openAuth } = useAuth();
   const { unread, pending } = useInboxSummary();
   const [profile, setProfile] = useState(null);
   const [books, setBooks] = useState([]); const [wishlist, setWishlist] = useState(null); const [offers, setOffers] = useState(null);
@@ -45,8 +45,8 @@ export default function DashboardPage() {
   const [deleteTarget, setDeleteTarget] = useState(null); const [deleting, setDeleting] = useState(false);
 
   const id = user?.id;
-  const usernameKey = `betterreads.username.${id || ''}`;
-  const username = id ? localGet(usernameKey, '') : '';
+  // Username is now a real, server-enforced field on the profile.
+  const username = profile?.username || user?.username || '';
 
   useEffect(() => { localSet('betterreads.dash-theme', theme); }, [theme]);
   useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); }, [avatarPreview]);
@@ -68,7 +68,7 @@ export default function DashboardPage() {
   }, [user]);
 
   function selectAvatar(event) { const file = event.target.files?.[0]; setError(''); if (!file) return; if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || !file.size || file.size > 5 * 1024 * 1024) { setError('Choose a JPEG, PNG, or WebP image up to 5 MB.'); event.target.value = ''; return; } setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file)); }
-  async function saveProfile(event) { event.preventDefault(); if (saving) return; const form = new FormData(event.currentTarget); const name = String(form.get('name')).trim(); const handle = String(form.get('username')).trim().replace(/^@/, ''); if (!name || (handle && !/^[a-zA-Z0-9_.]{3,30}$/.test(handle))) { setError('Enter a name and a username of 3–30 letters, numbers, dots or underscores.'); return; } setSaving(true); setError(''); try { let avatarUrl = profile?.avatarUrl || ''; if (avatarFile) { const upload = await api('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: await readImage(avatarFile) }) }); if (!upload.url) throw new Error('Unable to upload your avatar.'); avatarUrl = upload.url; } const data = await api(`/api/users/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, bio: String(form.get('bio')).trim(), city: String(form.get('city')).trim(), genres: String(form.get('genres')).split(',').map((g) => g.trim()).filter(Boolean), avatarUrl }) }); setProfile(data.user); window.dispatchEvent(new Event('betterreads:profile-change')); localSet(usernameKey, handle); setAvatarFile(null); setAvatarPreview(''); setEditing(false); toast.success('Profile updated'); } catch (err) { toast.error(err.message); } finally { setSaving(false); } }
+  async function saveProfile(event) { event.preventDefault(); if (saving) return; const form = new FormData(event.currentTarget); const name = String(form.get('name')).trim(); const handle = normalizeUsername(form.get('username')); if (!name) { setError('Enter your name.'); return; } const handleProblem = usernameError(handle); if (handleProblem) { setError(handleProblem); return; } setSaving(true); setError(''); try { let avatarUrl = profile?.avatarUrl || ''; if (avatarFile) { const upload = await api('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: await readImage(avatarFile) }) }); if (!upload.url) throw new Error('Unable to upload your avatar.'); avatarUrl = upload.url; } const data = await api(`/api/users/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, username: handle, bio: String(form.get('bio')).trim(), city: String(form.get('city')).trim(), genres: String(form.get('genres')).split(',').map((g) => g.trim()).filter(Boolean), avatarUrl }) }); setProfile(data.user); window.dispatchEvent(new Event('betterreads:profile-change')); setAvatarFile(null); setAvatarPreview(''); setEditing(false); toast.success('Profile updated'); } catch (err) { setError(err.status === 409 ? err.message : ''); toast.error(err.message); } finally { setSaving(false); } }
   async function saveBook(event) { event.preventDefault(); const form = new FormData(event.currentTarget); try { await api(`/api/books/${encodeURIComponent(editBook._id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: String(form.get('title')).trim(), author: String(form.get('author')).trim(), genre: String(form.get('genre')).trim(), condition: form.get('condition'), city: String(form.get('city')).trim(), description: String(form.get('description')).trim(), barterAvailable: form.has('barter'), borrowAvailable: form.has('borrow') }) }); setEditBook(null); await loadBooks(); toast.success('Listing updated'); } catch (err) { toast.error(err.message); } }
   async function confirmDelete() { if (!deleteTarget || deleting) return; setDeleting(true); setError(''); try { await api(`/api/books/${encodeURIComponent(deleteTarget._id)}`, { method: 'DELETE' }); await loadBooks(); toast.success(`"${deleteTarget.title}" deleted`); setDeleteTarget(null); } catch (err) { toast.error(err.message); } finally { setDeleting(false); } }
 
@@ -98,7 +98,7 @@ export default function DashboardPage() {
       <div className="mx-auto w-full max-w-[1800px] px-6 py-6 max-sm:px-4">
         {authLoading ? <div className="py-14 text-muted-foreground" role="status">Loading your dashboard…</div>
           : authError && !user ? <div className="flex flex-col items-start gap-3 py-14" role="alert"><p className="text-muted-foreground">{authError}</p><Button variant="outline" onClick={refresh}>Try again</Button></div>
-          : !user ? <div className="py-6"><AuthLayout><AccountPanel onAuthenticated={refresh} /></AuthLayout></div>
+          : !user ? <div className="flex min-h-[calc(100vh-92px-3rem)] flex-col items-center justify-center gap-4 py-14 text-center"><div className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><BookOpen className="size-6" /></div><div><h1 className="font-heading text-2xl font-bold tracking-tight">Your reading dashboard</h1><p className="mt-1 max-w-sm text-sm text-muted-foreground">Log in to manage your listings, wishlist, and requests.</p></div><Button onClick={() => openAuth('login', 'Log in to open your dashboard.')}>Log in or sign up</Button></div>
           : <>
           {notice && <div className="mb-5 rounded-lg border border-border bg-muted px-4 py-3 text-sm" role="status">{notice}</div>}
           {error && <div className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">{error}</div>}
@@ -113,10 +113,7 @@ export default function DashboardPage() {
                   <Button variant="ghost" size="icon-sm" aria-label="Edit profile" onClick={() => { setEditing(!editing); setError(''); }}><Pencil /></Button>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Avatar className="size-14">
-                    <AvatarImage src={profile?.avatarUrl ? photoUrl(profile.avatarUrl) : undefined} alt="" />
-                    <AvatarFallback className="text-lg">{(profile?.name || user.name || 'R').slice(0, 1).toUpperCase()}</AvatarFallback>
-                  </Avatar>
+                  <BrandAvatar user={profile || user} className="size-14" fallbackClassName="text-lg" />
                   <div className="flex min-w-0 flex-col">
                     <h2 className="font-heading text-lg font-semibold break-words">{profile?.name || user.name || 'Reader'}</h2>
                     {username && <span className="text-sm font-medium text-primary">@{username}</span>}
@@ -258,7 +255,8 @@ export default function DashboardPage() {
                       </Field>
                       <Field>
                         <FieldLabel htmlFor="dash-pf-username">Username</FieldLabel>
-                        <Input id="dash-pf-username" name="username" defaultValue={username} maxLength={30} autoComplete="off" placeholder="your-handle" />
+                        <Input id="dash-pf-username" name="username" defaultValue={username} minLength={3} maxLength={30} autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="your-handle" required />
+                        <FieldDescription>3–30 letters, numbers, dots or underscores. Shown as @{username || 'yourname'}.</FieldDescription>
                       </Field>
                     </div>
                     <Field>

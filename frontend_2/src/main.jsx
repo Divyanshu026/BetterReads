@@ -9,11 +9,20 @@ import CatalogPage from './CatalogPage.jsx';
 import CommunityPage from './CommunityPage.jsx';
 import ReaderProfilePage from './ReaderProfilePage.jsx';
 import DashboardPage from './DashboardPage.jsx';
+import { AuthProvider } from './services/AuthContext.jsx';
 import { Toaster } from '@/components/ui/sonner';
 
 const path = currentPath().replace(/\/$/, '');
+
+// Direct login/signup links keep working by opening the shared auth modal in
+// the right mode over the home page, instead of a dedicated login page.
+let initialAuth = null;
+if (path === '/login') initialAuth = 'login';
+else if (path === '/signup' || path === '/register') initialAuth = 'register';
+
 let page = <App />;
-if (path === '/list-book') page = <ListingPage />;
+if (initialAuth) page = <App />;
+else if (path === '/list-book') page = <ListingPage />;
 else if (path === '/books') page = <CatalogPage />;
 else if (path === '/wishlist') { const params = new URLSearchParams(window.location.search); params.set('openWishlist', '1'); window.location.replace(`${appPath('/')}?${params}`); }
 else if (path === '/inbox') { const params = new URLSearchParams(window.location.search); params.set('openInbox', '1'); window.location.replace(`${appPath('/')}?${params}`); }
@@ -24,6 +33,15 @@ else if (/^\/readers\/[a-f\d]{24}$/i.test(path)) page = <ReaderProfilePage reade
 else if (/^\/books\/[a-f\d]{24}$/i.test(path)) {
   page = <BookDetailPage id={path.slice('/books/'.length)} />;
 }
-createRoot(document.getElementById('root')).render(<React.StrictMode>{page}<Toaster position="bottom-right" richColors closeButton /></React.StrictMode>);
 
+// Normalize /login and /signup to the home URL so a refresh doesn't re-trigger.
+if (initialAuth) window.history.replaceState(null, '', appPath('/'));
 
+createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <AuthProvider initialAuth={initialAuth}>
+      {page}
+      <Toaster position="bottom-right" richColors closeButton />
+    </AuthProvider>
+  </React.StrictMode>,
+);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getToken } from '../services/auth.js';
+import { useAuth } from '../services/AuthContext.jsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,7 +9,8 @@ import { FieldGroup, Field, FieldLabel } from '@/components/ui/field';
 
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
-export default function ListingForm({ photos, onBusyChange, onCreated, onSignIn }) {
+export default function ListingForm({ photos, onBusyChange, onCreated }) {
+  const { user, openAuth } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -90,7 +92,7 @@ export default function ListingForm({ photos, onBusyChange, onCreated, onSignIn 
     }
   }
 
-  if (!token) return <div className="flex flex-col items-start gap-3"><p className="text-sm text-muted-foreground">Log in or create an account to list a book.</p><Button type="button" onClick={onSignIn}>Log in or sign up</Button></div>;
+  if (!token || !user) return <div className="flex flex-col items-start gap-3"><p className="text-sm text-muted-foreground">Log in or create an account to list a book.</p><Button type="button" onClick={() => openAuth('login', 'Log in to list a book.')}>Log in or sign up</Button></div>;
   return (
     <form onSubmit={submit}>
       <p className="mb-4 text-sm text-muted-foreground">Share the details of the book you would like to pass along.</p>
@@ -107,7 +109,7 @@ export default function ListingForm({ photos, onBusyChange, onCreated, onSignIn 
         <Field><FieldLabel htmlFor="lf-interests">Books you would like in return (optional)</FieldLabel><Input id="lf-interests" name="interests" maxLength={250} /></Field>
         <Field orientation="horizontal"><input id="lf-borrow" type="checkbox" name="borrow" className="size-4 accent-primary" /><FieldLabel htmlFor="lf-borrow" className="font-normal">Available to borrow</FieldLabel></Field>
         {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
-        {sessionExpired && <Button type="button" variant="link" className="self-start px-0" onClick={onSignIn}>Log in again</Button>}
+        {sessionExpired && <Button type="button" variant="link" className="self-start px-0" onClick={() => openAuth('login', 'Log in again to finish your listing.')}>Log in again</Button>}
         <Button type="submit" className="w-full" disabled={busy}>{busy ? 'Listing book…' : 'List book'}</Button>
       </FieldGroup>
     </form>

@@ -1,7 +1,6 @@
 import { appPath } from './services/paths.js';
 import { useEffect, useRef, useState } from 'react';
 import { Camera, Check, Image as ImageIcon, X } from 'lucide-react';
-import AccountPanel from './components/AccountPanel.jsx';
 import ListingForm from './components/ListingForm.jsx';
 import Navbar from './components/Navbar.jsx';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty';
 
 export default function ListingPage() {
-  const [signingIn, setSigningIn] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [photoError, setPhotoError] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -78,34 +76,22 @@ export default function ListingPage() {
               <CardHeader className="border-b [.border-b]:pb-4">
                 <span className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">Your book</span>
                 <CardTitle id="listing-title" className="font-heading text-2xl font-semibold">
-                  {signingIn ? 'Your account' : 'Tell us about it'}
+                  Tell us about it
                 </CardTitle>
                 <CardDescription>
-                  {signingIn
-                    ? 'Log in to continue your listing.'
-                    : 'A short, honest description helps readers decide.'}
+                  A short, honest description helps readers decide.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {signingIn ? (
-                  <>
-                    <AccountPanel onAuthenticated={() => setSigningIn(false)} />
-                    <Button variant="ghost" size="sm" className="mt-3" type="button" onClick={() => setSigningIn(false)}>
-                      Back to listing
-                    </Button>
-                  </>
-                ) : (
-                  <ListingForm
-                    photos={photos}
-                    onBusyChange={setUploading}
-                    onSignIn={() => setSigningIn(true)}
-                    onCreated={(data) => {
-                      sessionStorage.setItem('betterreads.listingCreated', '1');
-                      sessionStorage.setItem('betterreads.listingTitle', data?.book?.title || data?.title || 'Your book');
-                      window.location.assign(appPath('/books'));
-                    }}
-                  />
-                )}
+                <ListingForm
+                  photos={photos}
+                  onBusyChange={setUploading}
+                  onCreated={(data) => {
+                    sessionStorage.setItem('betterreads.listingCreated', '1');
+                    sessionStorage.setItem('betterreads.listingTitle', data?.book?.title || data?.title || 'Your book');
+                    window.location.assign(appPath('/books'));
+                  }}
+                />
               </CardContent>
             </Card>
           </section>

@@ -1,7 +1,6 @@
 import { appPath } from './services/paths.js';
 import { useEffect, useRef, useState } from 'react';
 import BookCard from './components/BookCard.jsx';
-import AccountPanel from './components/AccountPanel.jsx';
 import Navbar from './components/Navbar.jsx';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
