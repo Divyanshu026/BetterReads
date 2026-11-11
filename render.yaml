@@ -16,11 +16,37 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: JWT_EXPIRES_IN
-        value: 7d
+      - key: ACCESS_TOKEN_TTL
+        value: 15m
+      - key: REFRESH_TOKEN_TTL_DAYS
+        value: "30"
       - key: FRONTEND_URL
         value: https://bettereads.dvyanshu.page
+      - key: APP_URL
+        value: https://bettereads.dvyanshu.page
       - key: FRONTEND_ORIGINS
+        sync: false
+      # Auth cookies are cross-site (SPA and API on different origins); leave
+      # COOKIE_DOMAIN unset so cookies scope to the API host.
+      - key: COOKIE_DOMAIN
+        sync: false
+      # Email (SMTP). Set MAIL_ENABLED=true and the SMTP_* values to send real
+      # verification/reset mail; otherwise links are logged to the server console.
+      - key: MAIL_ENABLED
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      # Google OAuth: set to light up Google sign-in (also needs VITE_GOOGLE_CLIENT_ID
+      # in the frontend build and the prod origin in the Google Console).
+      - key: GOOGLE_CLIENT_ID
         sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false

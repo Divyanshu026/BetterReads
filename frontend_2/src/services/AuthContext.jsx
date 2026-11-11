@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { getCurrentUser } from './api.js';
-import { clearToken, getToken } from './auth.js';
+import { apiBase, getCurrentUser } from './api.js';
+import { isSignedIn, markSignedOut } from './auth.js';
 import AuthModal from '../components/AuthModal.jsx';
 
 const AuthContext = createContext(null);
@@ -12,7 +12,7 @@ const AuthContext = createContext(null);
 // Mount this once near the root. Every page reads it through useAuth().
 export function AuthProvider({ children, initialAuth = null }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(() => Boolean(getToken()));
+  const [loading, setLoading] = useState(() => isSignedIn());
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
 
@@ -23,22 +23,23 @@ export function AuthProvider({ children, initialAuth = null }) {
   // Direct /login and /signup links open the shared modal in the right mode,
   // unless the visitor is already signed in.
   useEffect(() => {
-    if (!initialAuth || getToken()) return;
+    if (!initialAuth || isSignedIn()) return;
     setModal({ open: true, mode: initialAuth === 'register' ? 'register' : 'login', step: 'auth', prompt: '', user: null });
   }, [initialAuth]);
 
-  // Load / refresh the current user whenever the token changes.
+  // Load / refresh the current user whenever the session changes. The session
+  // lives in an httpOnly cookie now, so we go by the local "signed in" hint and
+  // let /api/auth/me (with its silent refresh-retry) be the real authority.
   useEffect(() => {
     let active = true;
-    const token = getToken();
-    if (!token) { setUser(null); setLoading(false); setError(''); return () => { active = false; }; }
+    if (!isSignedIn()) { setUser(null); setLoading(false); setError(''); return () => { active = false; }; }
     setLoading(true);
     setError('');
     getCurrentUser()
-      .then((data) => { if (active && getToken() === token) setUser(data.user); })
+      .then((data) => { if (active) setUser(data.user); })
       .catch((err) => {
-        if (!active || getToken() !== token) return;
-        if (err.status === 401) { clearToken(token); setUser(null); setError(''); }
+        if (!active) return;
+        if (err.status === 401) { markSignedOut(); setUser(null); setError(''); }
         else setError(err.status === 429 ? 'Too many requests. Please wait a few minutes and try again.' : 'Unable to check your account. Check that the backend is running and try again.');
       })
       .finally(() => { if (active) setLoading(false); });
@@ -116,11 +117,29 @@ export function AuthProvider({ children, initialAuth = null }) {
     return false;
   }, [user]);
 
-  const logout = useCallback(() => { clearToken(); setUser(null); setError(''); }, []);
+  // Revoke the session server-side (best-effort — clear locally regardless so
+  // the UI never gets stuck signed in), then clear the local hint.
+  const logout = useCallback(() => {
+    fetch(`${apiBase}/api/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
+    markSignedOut();
+    setUser(null);
+    setError('');
+  }, []);
+
+  // Ask the server to re-send the verification email for the signed-in account.
+  const resendVerification = useCallback(async () => {
+    const response = await fetch(`${apiBase}/api/auth/resend-verification`, { method: 'POST', credentials: 'include' });
+    if (!response.ok) {
+      const message = response.status === 429
+        ? 'Too many requests. Please wait a few minutes and try again.'
+        : 'Could not resend the verification email. Please try again.';
+      throw new Error(message);
+    }
+  }, []);
 
   const value = useMemo(
-    () => ({ user, loading, error, refresh, requireAuth, openAuth, closeModal, logout }),
-    [user, loading, error, refresh, requireAuth, openAuth, closeModal, logout],
+    () => ({ user, loading, error, refresh, requireAuth, openAuth, closeModal, logout, resendVerification }),
+    [user, loading, error, refresh, requireAuth, openAuth, closeModal, logout, resendVerification],
   );
 
   return (

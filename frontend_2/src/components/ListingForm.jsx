@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getToken } from '../services/auth.js';
+import { isSignedIn } from '../services/auth.js';
 import { useAuth } from '../services/AuthContext.jsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ export default function ListingForm({ photos, onBusyChange, onCreated }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sessionExpired, setSessionExpired] = useState(false);
-  const token = getToken();
+  const signedIn = isSignedIn();
 
   async function submit(event) {
     event.preventDefault();
@@ -50,7 +50,8 @@ export default function ListingForm({ photos, onBusyChange, onCreated }) {
         });
         const upload = await fetch(`${apiBase}/api/upload`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image }),
         });
         if (upload.status === 401) {
@@ -68,7 +69,8 @@ export default function ListingForm({ photos, onBusyChange, onCreated }) {
       listingRequestStarted = true;
       const response = await fetch(`${apiBase}/api/books`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!response.ok) listingRejected = true;
@@ -83,7 +85,7 @@ export default function ListingForm({ photos, onBusyChange, onCreated }) {
       onCreated(data);
     } catch (err) {
       if (!listingRequestStarted || listingRejected) {
-        await Promise.allSettled(uploaded.map((image) => fetch(`${apiBase}/api/upload/${encodeURIComponent(image.publicId)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })));
+        await Promise.allSettled(uploaded.map((image) => fetch(`${apiBase}/api/upload/${encodeURIComponent(image.publicId)}`, { method: 'DELETE', credentials: 'include' })));
       }
       setError(err instanceof TypeError ? 'Unable to connect to the listing server. Please try again.' : err.message);
     } finally {
@@ -92,7 +94,7 @@ export default function ListingForm({ photos, onBusyChange, onCreated }) {
     }
   }
 
-  if (!token || !user) return <div className="flex flex-col items-start gap-3"><p className="text-sm text-muted-foreground">Log in or create an account to list a book.</p><Button type="button" onClick={() => openAuth('login', 'Log in to list a book.')}>Log in or sign up</Button></div>;
+  if (!signedIn || !user) return <div className="flex flex-col items-start gap-3"><p className="text-sm text-muted-foreground">Log in or create an account to list a book.</p><Button type="button" onClick={() => openAuth('login', 'Log in to list a book.')}>Log in or sign up</Button></div>;
   return (
     <form onSubmit={submit}>
       <p className="mb-4 text-sm text-muted-foreground">Share the details of the book you would like to pass along.</p>

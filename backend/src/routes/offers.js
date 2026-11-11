@@ -9,7 +9,7 @@ const {
   cancelOffer,
   returnBorrow,
 } = require('../controllers/offersController');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireVerified } = require('../middleware/auth');
 
 // All offer routes require authentication
 router.use(requireAuth);
@@ -17,8 +17,8 @@ router.use(requireAuth);
 // GET /api/offers — list offers (filter by listingId, proposerId, or receivedByMe)
 router.get('/', listOffers);
 
-// POST /api/offers — create a new offer
-router.post('/', createOffer);
+// POST /api/offers — create a new offer (verified users only)
+router.post('/', requireVerified, createOffer);
 
 router.patch('/:id/return', returnBorrow);
 

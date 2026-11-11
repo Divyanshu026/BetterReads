@@ -30,8 +30,32 @@ module.exports = {
   // Secret key for signing/verifying JWTs; keep this private and strong
   jwtSecret: process.env.JWT_SECRET,
 
-  // Token lifetime for JWTs; examples: '1h', '7d'
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
+  // Access-token lifetime. Kept short because an opaque refresh session (stored
+  // server-side, delivered as an httpOnly cookie) silently reissues it.
+  jwtExpiresIn: process.env.ACCESS_TOKEN_TTL || process.env.JWT_EXPIRES_IN || '15m',
+
+  // How long a refresh session (and its cookies) lives, in days.
+  refreshTokenTtlDays: Number(process.env.REFRESH_TOKEN_TTL_DAYS) || 30,
+
+  // Optional cookie domain (e.g. '.dvyanshu.page' to share across subdomains).
+  // Leave blank to scope cookies to the exact API host.
+  cookieDomain: process.env.COOKIE_DOMAIN || '',
+
+  // Base URL used to build links inside emails (verify / reset). Defaults to the
+  // primary frontend URL.
+  appUrl: (process.env.APP_URL || process.env.FRONTEND_URL || frontendUrl).replace(/\/$/, ''),
+
+  // Outbound email (SMTP via Nodemailer). When `enabled` is false the mailer
+  // falls back to logging messages to the console, so verify/reset flows work in
+  // dev, demo, and tests without a real SMTP server.
+  mail: {
+    enabled: process.env.MAIL_ENABLED === 'true',
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT) || 587,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.SMTP_FROM || 'BetterReads <no-reply@betterreads.app>',
+  },
 
   // Google OAuth client ID; when set, Google Sign-In is enabled. Leave blank to disable.
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',

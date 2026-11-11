@@ -26,6 +26,22 @@ async function start() {
     server.listen(config.port, () => {
       console.log(`Server listening on port ${config.port}`);
     });
+
+    // Graceful shutdown: stop accepting connections, then close the DB. Session
+    // and email-token expiry is handled by Mongo TTL indexes, so there is no
+    // cleanup job to drain here.
+    const shutdown = (signal) => {
+      console.log(`Received ${signal}, shutting down`);
+      server.close(() => {
+        require('mongoose')
+          .disconnect()
+          .finally(() => process.exit(0));
+      });
+      // Don't hang forever if connections refuse to drain.
+      setTimeout(() => process.exit(0), 10000).unref();
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (err) {
     // If any step fails, log the error and exit with failure
     console.error('Failed to start server', err);

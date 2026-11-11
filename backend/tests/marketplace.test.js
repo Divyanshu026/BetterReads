@@ -67,6 +67,9 @@ beforeAll(async () => {
     else if (name === 'buyer') buyer = r.body;
     else stranger = r.body;
   }
+  // These fixtures exercise marketplace flows (offers, chat, checkout) that sit
+  // behind the soft email-verification gate, so mark the seeded users verified.
+  await User.updateMany({}, { $set: { emailVerified: true } });
   let counter = 0;
   jest.spyOn(stripe.checkout.sessions, 'create').mockImplementation(async () => ({
     id: 'cs_test_' + ++counter,
