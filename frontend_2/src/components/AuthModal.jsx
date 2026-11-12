@@ -343,7 +343,7 @@ function AuthForm({ initialMode = 'login', onAuthenticated }) {
 // The shared, accessible auth modal. Radix Dialog gives us the focus trap,
 // Escape-to-close, and labelling; we drive open state and the two steps.
 export default function AuthModal({ open, mode = 'login', step = 'auth', user, prompt, onAuthenticated, onOnboarded, onOpenChange }) {
-  const title = step === 'onboarding' ? 'Choose your username' : mode === 'register' ? 'Join BetterReads' : 'Welcome back';
+  const title = step === 'onboarding' ? 'Choose your username' : mode === 'register' ? 'Join Bettereads' : 'Welcome back';
   const description = step === 'onboarding'
     ? 'One last step to finish setting up your account.'
     : mode === 'register'

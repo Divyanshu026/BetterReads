@@ -50,10 +50,15 @@ app.use(cookieParser());
 // Serve uploaded files statically (fallback when Cloudinary not configured)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Disable rate limiting under the test runner, where many requests share one
+// IP in a single process and would otherwise trip the caps.
+const skipInTest = () => config.nodeEnv === 'test';
+
 // Rate limiter: limit requests per IP per window to mitigate abuse
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
+  skip: skipInTest,
 });
 app.use(limiter);
 
@@ -61,7 +66,7 @@ app.use(limiter);
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // Mount REST API routes
-app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }), authRoutes);
+app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 30, skip: skipInTest }), authRoutes);
 app.use('/api/community', require('./routes/community'));
 app.use('/api/users', usersRoutes);
 app.use('/api/books', booksRoutes);

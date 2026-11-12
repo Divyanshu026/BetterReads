@@ -40,7 +40,7 @@ export default function ExchangeRequestModal({ book, user, onClose, onCreated })
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
-  return <dialog ref={dialog} className="w-[min(480px,calc(100%-32px))] rounded-xl bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/50 font-sans" aria-labelledby="exchange-title" onCancel={(e) => { e.preventDefault(); if (!busy) onClose(); }}><div className="relative p-6">
+  return <dialog ref={dialog} className="fixed inset-0 m-auto h-fit max-h-[calc(100dvh-32px)] w-[min(480px,calc(100%-32px))] overflow-y-auto rounded-xl bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/50 font-sans" aria-labelledby="exchange-title" onCancel={(e) => { e.preventDefault(); if (!busy) onClose(); }}><div className="relative p-6">
     <button type="button" className="absolute top-4 right-4 flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50" onClick={onClose} aria-label="Close request" disabled={busy}><X size={18} /></button>
     <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Reader to reader</span>
     <h2 id="exchange-title" className="font-heading text-xl font-semibold">Ask for an exchange or borrow</h2>

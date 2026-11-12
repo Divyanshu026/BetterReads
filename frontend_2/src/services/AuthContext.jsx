@@ -1,7 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { apiBase, getCurrentUser } from './api.js';
+import { appPath } from './paths.js';
 import { isSignedIn, markSignedOut } from './auth.js';
 import AuthModal from '../components/AuthModal.jsx';
+import VerifyCodeModal from '../components/VerifyCodeModal.jsx';
 
 const AuthContext = createContext(null);
 
@@ -18,6 +21,8 @@ export function AuthProvider({ children, initialAuth = null }) {
 
   // Modal state. `step` is 'auth' (login/signup) or 'onboarding' (username).
   const [modal, setModal] = useState({ open: false, mode: 'login', step: 'auth', prompt: '', user: null });
+  // Separate open state for the typed-code email verification modal.
+  const [verifyCodeOpen, setVerifyCodeOpen] = useState(false);
   const pendingAction = useRef(null);
 
   // Direct /login and /signup links open the shared modal in the right mode,
@@ -81,7 +86,31 @@ export function AuthProvider({ children, initialAuth = null }) {
     if (typeof action === 'function') {
       // Defer so the modal close and state update settle first.
       window.setTimeout(() => { try { action(authedUser); } catch { /* ignore */ } }, 0);
+    } else {
+      // No action to resume: gently nudge the reader to round out their profile.
+      // Only on an actual sign-in (this runs from the auth/onboarding steps, not
+      // on token refresh), and skippable.
+      promptProfileCompletion();
     }
+  }, []);
+
+  // A one-time, dismissible prompt after sign-in inviting the reader to fill out
+  // their profile. "Complete profile" opens the dashboard editor; "Skip for now"
+  // just closes it. Not shown while the dashboard editor is already on screen.
+  const promptProfileCompletion = useCallback(() => {
+    if (window.location.pathname.replace(/\/$/, '').endsWith('/dashboard')) return;
+    window.setTimeout(() => {
+      toast('Complete your profile', {
+        id: 'complete-profile',
+        description: 'Add a photo, bio, and city so other readers get to know you.',
+        duration: 10000,
+        action: {
+          label: 'Complete profile',
+          onClick: () => window.location.assign(`${appPath('/dashboard')}?edit=1`),
+        },
+        cancel: { label: 'Skip for now', onClick: () => {} },
+      });
+    }, 400);
   }, []);
 
   // Called by the modal's auth step with the server payload.
@@ -124,6 +153,10 @@ export function AuthProvider({ children, initialAuth = null }) {
     markSignedOut();
     setUser(null);
     setError('');
+    // Send the signed-out user to the public home page so they never land on a
+    // now-empty protected view (dashboard, inbox). A full navigation also
+    // guarantees any per-page signed-in state is cleared.
+    window.location.assign(appPath('/'));
   }, []);
 
   // Ask the server to re-send the verification email for the signed-in account.
@@ -137,9 +170,39 @@ export function AuthProvider({ children, initialAuth = null }) {
     }
   }, []);
 
+  // Open the typed-code verification modal (it sends a fresh code on open).
+  const openVerifyCode = useCallback(() => setVerifyCodeOpen(true), []);
+
+  // Apply a successful code verification: update the user and close the modal.
+  const handleCodeVerified = useCallback((updatedUser) => {
+    if (updatedUser) setUser(updatedUser);
+    window.dispatchEvent(new Event('betterreads:profile-change'));
+    setVerifyCodeOpen(false);
+    toast.success('Email verified. You now have full access.');
+  }, []);
+
+  // Prompt the user to verify their email, with a one-click "Verify email"
+  // action that opens the code modal. Called both directly and in response to a
+  // blocked (403 EMAIL_NOT_VERIFIED) action anywhere in the app.
+  const promptVerification = useCallback((description) => {
+    toast.warning('Verify your email to continue', {
+      id: 'needs-verification', // dedupe rapid repeats
+      description: description || 'This action needs a verified email address.',
+      action: { label: 'Verify email', onClick: () => setVerifyCodeOpen(true) },
+    });
+  }, []);
+
+  // One central listener: any gated action that the server rejects as
+  // unverified surfaces the same prompt, so no call site needs its own handling.
+  useEffect(() => {
+    const onNeeds = () => promptVerification();
+    window.addEventListener('betterreads:needs-verification', onNeeds);
+    return () => window.removeEventListener('betterreads:needs-verification', onNeeds);
+  }, [promptVerification]);
+
   const value = useMemo(
-    () => ({ user, loading, error, refresh, requireAuth, openAuth, closeModal, logout, resendVerification }),
-    [user, loading, error, refresh, requireAuth, openAuth, closeModal, logout, resendVerification],
+    () => ({ user, loading, error, refresh, requireAuth, openAuth, closeModal, logout, resendVerification, promptVerification, openVerifyCode }),
+    [user, loading, error, refresh, requireAuth, openAuth, closeModal, logout, resendVerification, promptVerification, openVerifyCode],
   );
 
   return (
@@ -154,6 +217,13 @@ export function AuthProvider({ children, initialAuth = null }) {
         onAuthenticated={handleAuthenticated}
         onOnboarded={handleOnboarded}
         onOpenChange={onOpenChange}
+      />
+      <VerifyCodeModal
+        open={verifyCodeOpen}
+        email={user?.email}
+        resend={resendVerification}
+        onVerified={handleCodeVerified}
+        onOpenChange={setVerifyCodeOpen}
       />
     </AuthContext.Provider>
   );

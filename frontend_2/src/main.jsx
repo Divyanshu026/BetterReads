@@ -12,7 +12,6 @@ import DashboardPage from './DashboardPage.jsx';
 import VerifyEmailPage from './VerifyEmailPage.jsx';
 import ResetPasswordPage from './ResetPasswordPage.jsx';
 import { AuthProvider } from './services/AuthContext.jsx';
-import VerifyEmailBanner from './components/VerifyEmailBanner.jsx';
 import { Toaster } from '@/components/ui/sonner';
 
 const path = currentPath().replace(/\/$/, '');
@@ -42,14 +41,9 @@ else if (/^\/books\/[a-f\d]{24}$/i.test(path)) {
 // Normalize /login and /signup to the home URL so a refresh doesn't re-trigger.
 if (initialAuth) window.history.replaceState(null, '', appPath('/'));
 
-// The verify/reset pages are reached from an email link and may be opened by a
-// different account than the one signed in here, so they don't show the banner.
-const showBanner = path !== '/verify-email' && path !== '/reset-password';
-
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthProvider initialAuth={initialAuth}>
-      {showBanner && <VerifyEmailBanner />}
       {page}
       <Toaster position="bottom-right" richColors closeButton />
     </AuthProvider>

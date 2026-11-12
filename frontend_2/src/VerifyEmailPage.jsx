@@ -48,14 +48,14 @@ export default function VerifyEmailPage() {
               {status === 'verifying'
                 ? 'One moment while we confirm your link.'
                 : status === 'success'
-                  ? 'Your email address is confirmed. You now have full access to BetterReads.'
+                  ? 'Your email address is confirmed. You now have full access to Bettereads.'
                   : message}
             </CardDescription>
           </CardHeader>
           {status !== 'verifying' && (
             <CardContent className="flex justify-center">
               <Button type="button" onClick={() => window.location.assign(appPath('/'))}>
-                {status === 'success' ? 'Start exploring' : 'Back to BetterReads'}
+                {status === 'success' ? 'Start exploring' : 'Back to Bettereads'}
               </Button>
             </CardContent>
           )}

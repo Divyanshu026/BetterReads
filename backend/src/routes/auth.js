@@ -12,6 +12,7 @@ const {
   logoutAll,
   sessions,
   verifyEmail,
+  verifyCode,
   resendVerification,
   forgotPassword,
   resetPassword,
@@ -26,7 +27,14 @@ const { wrap } = require('../lib/http');
 // A stricter limiter for endpoints that send email or probe credentials, to
 // curb abuse (enumeration, mail-bombing, reset flooding) beyond the router-wide
 // auth limiter applied in app.js.
-const sensitiveLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10 });
+// Disable rate limiting under the test runner (many requests share one IP).
+const skipInTest = () => require('../config').nodeEnv === 'test';
+
+const sensitiveLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, skip: skipInTest });
+
+// Typed-code verification is the small 6-digit space, so throttle guesses per
+// IP in addition to the per-code attempt cap enforced in the controller.
+const codeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, skip: skipInTest });
 
 // GET /api/auth/providers — which social sign-in options this server supports
 router.get('/providers', providers);
@@ -48,9 +56,11 @@ router.post('/logout', logout);
 router.post('/logout-all', requireAuth, logoutAll);
 // GET /api/auth/sessions — list the account's active sessions
 router.get('/sessions', requireAuth, sessions);
-// GET|POST /api/auth/verify-email?token=… — confirm an email address
+// GET|POST /api/auth/verify-email?token=… — confirm an email address via link
 router.get('/verify-email', verifyEmail);
 router.post('/verify-email', verifyEmail);
+// POST /api/auth/verify-code — confirm the signed-in account's email by code
+router.post('/verify-code', codeLimiter, requireAuth, verifyCode);
 // POST /api/auth/resend-verification — resend the verification email
 router.post('/resend-verification', sensitiveLimiter, requireAuth, resendVerification);
 // POST /api/auth/forgot-password — email a reset link (always 200)

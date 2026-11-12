@@ -34,8 +34,23 @@ export async function api(path, options = {}) {
   if (response.status === 429) { const error = new Error('Too many requests. Please wait a few minutes and try again.'); error.status = 429; throw error; }
   if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Unable to reach the server. Please try again.');
   const data = await response.json();
-  if (!response.ok) { const error = new Error(data?.error?.message || 'Unable to complete this request.'); error.status = response.status; throw error; }
+  if (!response.ok) {
+    const error = new Error(data?.error?.message || 'Unable to complete this request.');
+    error.status = response.status;
+    error.code = data?.error?.code;
+    // The soft email-verification gate: surface it centrally so any gated
+    // action (offers, borrow, chat, checkout) prompts the user the same way.
+    if (error.code === 'EMAIL_NOT_VERIFIED') notifyNeedsVerification();
+    throw error;
+  }
   return data;
+}
+
+// Fired when the server blocks an action because the email is unverified. A
+// single listener (in AuthContext) shows the "verify your email" prompt, so no
+// gated call site needs its own handling.
+export function notifyNeedsVerification() {
+  window.dispatchEvent(new Event('betterreads:needs-verification'));
 }
 export async function getAllBooks(query = '', signal) {
   const items = []; let page = 1; let total = 0;

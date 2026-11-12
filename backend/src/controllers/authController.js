@@ -7,11 +7,12 @@ const config = require('../config');
 const { wrap, fail } = require('../lib/http');
 const { verifyGoogleIdToken } = require('../services/google');
 const { normalizeUsername, usernameError, suggestUsername } = require('../lib/username');
-const { issueToken, consumeToken, randomToken, hashToken } = require('../lib/tokens');
+const { issueToken, issueVerification, consumeToken, consumeCode, randomToken, hashToken } = require('../lib/tokens');
 const { setAuthCookies, clearAuthCookies, REFRESH_COOKIE } = require('../lib/cookies');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/mailer');
 
-const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours (emailed link)
+const VERIFY_CODE_TTL_MS = 5 * 60 * 1000; // 5 minutes (typed code)
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 const publicUser = (user) => ({
@@ -60,8 +61,12 @@ const resetLink = (raw) => `${config.appUrl}/reset-password?token=${raw}`;
 // not fail signup, since the user can request a resend.
 async function sendVerification(user) {
   try {
-    const raw = await issueToken(Token, { userId: user._id, type: 'verify', ttlMs: VERIFY_TTL_MS });
-    await sendVerificationEmail(user, verifyLink(raw));
+    const { raw, code } = await issueVerification(Token, {
+      userId: user._id,
+      ttlMs: VERIFY_TTL_MS,
+      codeTtlMs: VERIFY_CODE_TTL_MS,
+    });
+    await sendVerificationEmail(user, verifyLink(raw), code);
   } catch (err) {
     console.error('Failed to send verification email', err.message);
   }
@@ -228,6 +233,21 @@ exports.verifyEmail = wrap(async (req, res) => {
     { new: true },
   );
   if (!user) fail(400, 'Account no longer exists');
+  res.json({ ok: true, user: publicUser(user) });
+});
+
+// POST /api/auth/verify-code — confirm the signed-in account's email with the
+// typed 6-digit code. Scoped to the authenticated user (a 6-digit code is not
+// globally unique), with a per-code attempt cap enforced in consumeCode.
+exports.verifyCode = wrap(async (req, res) => {
+  const user = await User.findById(req.user.userId);
+  if (!user) fail(401, 'Account no longer exists');
+  if (user.emailVerified) return res.json({ ok: true, user: publicUser(user) });
+  const result = await consumeCode(Token, { userId: user._id, type: 'verify', code: req.body?.code });
+  if (!result.ok) fail(400, result.reason);
+  user.emailVerified = true;
+  user.emailVerifiedAt = new Date();
+  await user.save();
   res.json({ ok: true, user: publicUser(user) });
 });
 

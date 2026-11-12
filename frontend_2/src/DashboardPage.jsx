@@ -1,6 +1,6 @@
 import { appPath } from './services/paths.js';
 import { useEffect, useState } from 'react';
-import { BookOpen, BookCheck, Repeat, Heart, MessageSquare, Bell, Plus, Sun, Moon, ArrowUpRight, MapPin, Calendar, Pencil, AlertTriangle } from 'lucide-react';
+import { BookOpen, BookCheck, Repeat, Heart, MessageSquare, Bell, Plus, Sun, Moon, ArrowUpRight, MapPin, Calendar, Pencil, AlertTriangle, MailCheck, MailWarning } from 'lucide-react';
 import PageShell from './components/PageShell.jsx';
 import BrandAvatar from './components/BrandAvatar.jsx';
 import { useAuth } from './services/AuthContext.jsx';
@@ -33,7 +33,7 @@ const num = (v) => (v === null || v === undefined ? '—' : v);
 const readImage = (file) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Could not read this photo.')); reader.readAsDataURL(file); });
 
 export default function DashboardPage() {
-  const { user, loading: authLoading, error: authError, refresh, openAuth } = useAuth();
+  const { user, loading: authLoading, error: authError, refresh, openAuth, openVerifyCode } = useAuth();
   const { unread, pending } = useInboxSummary();
   const [profile, setProfile] = useState(null);
   const [books, setBooks] = useState([]); const [wishlist, setWishlist] = useState(null); const [offers, setOffers] = useState(null);
@@ -71,6 +71,9 @@ export default function DashboardPage() {
   async function saveProfile(event) { event.preventDefault(); if (saving) return; const form = new FormData(event.currentTarget); const name = String(form.get('name')).trim(); const handle = normalizeUsername(form.get('username')); if (!name) { setError('Enter your name.'); return; } const handleProblem = usernameError(handle); if (handleProblem) { setError(handleProblem); return; } setSaving(true); setError(''); try { let avatarUrl = profile?.avatarUrl || ''; if (avatarFile) { const upload = await api('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: await readImage(avatarFile) }) }); if (!upload.url) throw new Error('Unable to upload your avatar.'); avatarUrl = upload.url; } const data = await api(`/api/users/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, username: handle, bio: String(form.get('bio')).trim(), city: String(form.get('city')).trim(), genres: String(form.get('genres')).split(',').map((g) => g.trim()).filter(Boolean), avatarUrl }) }); setProfile(data.user); window.dispatchEvent(new Event('betterreads:profile-change')); setAvatarFile(null); setAvatarPreview(''); setEditing(false); toast.success('Profile updated'); } catch (err) { setError(err.status === 409 ? err.message : ''); toast.error(err.message); } finally { setSaving(false); } }
   async function saveBook(event) { event.preventDefault(); const form = new FormData(event.currentTarget); try { await api(`/api/books/${encodeURIComponent(editBook._id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: String(form.get('title')).trim(), author: String(form.get('author')).trim(), genre: String(form.get('genre')).trim(), condition: form.get('condition'), city: String(form.get('city')).trim(), description: String(form.get('description')).trim(), barterAvailable: form.has('barter'), borrowAvailable: form.has('borrow') }) }); setEditBook(null); await loadBooks(); toast.success('Listing updated'); } catch (err) { toast.error(err.message); } }
   async function confirmDelete() { if (!deleteTarget || deleting) return; setDeleting(true); setError(''); try { await api(`/api/books/${encodeURIComponent(deleteTarget._id)}`, { method: 'DELETE' }); await loadBooks(); toast.success(`"${deleteTarget.title}" deleted`); setDeleteTarget(null); } catch (err) { toast.error(err.message); } finally { setDeleting(false); } }
+  // Prefer the freshly-loaded profile, falling back to the auth user, for the
+  // verified flag so the badge updates as soon as either source says verified.
+  const emailVerified = Boolean(profile?.emailVerified ?? user?.emailVerified);
 
   const available = books.filter((b) => b.status === 'available').length;
   const exchanges = offers === null ? null : offers.filter((o) => o.type === 'barter' && o.status === 'accepted').length;
@@ -125,6 +128,21 @@ export default function DashboardPage() {
                 </div>
                 <p className="text-sm text-foreground/90">{profile?.bio || 'Tell readers a little about yourself — add a bio from Edit profile.'}</p>
                 {(profile?.genres || []).length > 0 && <div className="flex flex-wrap gap-1.5">{profile.genres.map((g) => <Badge key={g} variant="secondary">{g}</Badge>)}</div>}
+
+                <div className="border-t border-border" />
+
+                {/* Email verification status */}
+                <div className="flex items-start gap-3">
+                  <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg border', emailVerified ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400')}>
+                    {emailVerified ? <MailCheck className="size-4" /> : <MailWarning className="size-4" />}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="text-sm font-medium">{emailVerified ? 'Email verified' : 'Email not verified'}</span>
+                    {emailVerified
+                      ? <span className="text-xs text-muted-foreground break-words">{profile?.email || user.email}</span>
+                      : <><span className="text-xs text-muted-foreground">Verify to make offers, borrow, and message readers.</span><Button variant="outline" size="sm" className="mt-1 self-start" onClick={openVerifyCode}>Verify email</Button></>}
+                  </div>
+                </div>
 
                 <div className="border-t border-border" />
 
@@ -232,7 +250,7 @@ export default function DashboardPage() {
             <DialogContent className="flex max-h-[90dvh] w-full flex-col gap-0 p-0 sm:max-w-2xl">
               <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-6 py-4">
                 <DialogTitle className="font-heading text-xl font-semibold">Edit profile</DialogTitle>
-                <DialogDescription className="sr-only">Update how other readers see you on BetterReads.</DialogDescription>
+                <DialogDescription className="sr-only">Update how other readers see you on Bettereads.</DialogDescription>
               </DialogHeader>
               <form onSubmit={saveProfile} className="flex min-h-0 flex-1 flex-col">
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">

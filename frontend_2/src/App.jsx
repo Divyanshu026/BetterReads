@@ -55,8 +55,8 @@ const questions = [
     'Yes. Choose List a book, add a few photos and an honest description, and your book joins the shelf for other readers to find.',
   ],
   [
-    'Is BetterReads free?',
-    'Listing, saving, and messaging are all free. BetterReads is readers passing good books to other readers, not a store.',
+    'Is Bettereads free?',
+    'Listing, saving, and messaging are all free. Bettereads is readers passing good books to other readers, not a store.',
   ],
   [
     'Do my saved books and account follow me?',
@@ -70,7 +70,7 @@ const questions = [
 
 function Brand({ light = false }) {
   return (
-    <a className="flex items-center gap-2.5" href="#top" aria-label="BetterReads home">
+    <a className="flex items-center gap-2.5" href="#top" aria-label="Bettereads home">
       <img className="size-10 rounded-full" src={appPath('/betterreads-reader.png')} alt="" />
       <span className="flex flex-col leading-none">
         <span className={cn('font-heading text-lg font-bold tracking-tight', light && 'text-brand-cream')}>BETTERREADS</span>
@@ -257,7 +257,7 @@ export default function App() {
           >
             <source src={appPath('/hero-reader.mp4')} type="video/mp4" />
           </video>
-          <div className="absolute inset-0 flex items-end bg-[linear-gradient(0deg,#141e22e6,#141e2266_60%,#141e221a)] px-[6vw] pt-[6vw] pb-[8vw] text-brand-cream">
+          <div className="absolute inset-0 flex items-end bg-[linear-gradient(0deg,#141e22cc,#141e221a_45%,transparent_70%)] px-[6vw] pt-[6vw] pb-[8vw] text-brand-cream">
             <div className="max-w-[780px]">
               <span className="flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-brand-cream/80 uppercase"><span className="inline-block size-1.5 rounded-full bg-brand-wheat" /> Stories find their way</span>
               <h1 style={{ fontFamily: "'Barlow Condensed', sans-serif" }} className="mt-4 text-[clamp(56px,9vw,104px)] leading-[0.9] font-extrabold tracking-tight uppercase">
@@ -328,7 +328,7 @@ export default function App() {
             <h2 style={{ fontFamily: "'Barlow Condensed', sans-serif" }} className="mt-2 text-[clamp(40px,6vw,64px)] leading-[0.95] font-extrabold tracking-tight uppercase">
               Good<br /><span className="text-brand-red">questions.</span>
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">A little more about BetterReads.</p>
+            <p className="mt-2 text-sm text-muted-foreground">A little more about Bettereads.</p>
             <BookOpen size={27} className="mt-4 text-brand-red" />
           </div>
           <Accordion type="single" collapsible defaultValue="faq-0" className="w-full">
@@ -352,7 +352,7 @@ export default function App() {
                 A community of readers passing good books along — exchange, borrow, and find the story that stays with you.
               </p>
             </div>
-            <nav className="flex flex-col gap-3 text-sm" aria-label="Explore BetterReads">
+            <nav className="flex flex-col gap-3 text-sm" aria-label="Explore Bettereads">
               <span className="text-xs font-semibold tracking-[0.14em] text-brand-cream/55 uppercase">Explore</span>
               <a className="w-fit text-brand-cream/85 transition-colors hover:text-brand-cream" href={appPath('/books')}>All books</a>
               <a className="w-fit text-brand-cream/85 transition-colors hover:text-brand-cream" href={appPath('/list-book')}>List a book</a>
@@ -369,7 +369,7 @@ export default function App() {
         </div>
         <div className="border-t border-brand-cream/15">
           <div className="mx-auto flex max-w-[1390px] flex-wrap items-center justify-between gap-2 px-[5vw] py-6 text-xs text-brand-cream/60">
-            <span>© {new Date().getFullYear()} BetterReads · Good books, new beginnings.</span>
+            <span>© {new Date().getFullYear()} Bettereads · Good books, new beginnings.</span>
             <a className="inline-flex items-center gap-1.5 transition-colors hover:text-brand-cream" href="#top">Back to the top <ArrowUpRight size={13} /></a>
           </div>
         </div>

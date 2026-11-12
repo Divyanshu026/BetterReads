@@ -54,7 +54,7 @@ module.exports = {
     port: Number(process.env.SMTP_PORT) || 587,
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
-    from: process.env.SMTP_FROM || 'BetterReads <no-reply@betterreads.app>',
+    from: process.env.SMTP_FROM || 'Bettereads <no-reply@betterreads.app>',
   },
 
   // Google OAuth client ID; when set, Google Sign-In is enabled. Leave blank to disable.

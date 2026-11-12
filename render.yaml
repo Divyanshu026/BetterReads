@@ -47,7 +47,7 @@ services:
       - key: SMTP_PASS
         sync: false
       - key: SMTP_FROM
-        value: BetterReads <no-reply@dvyanshu.page>
+        value: Bettereads <no-reply@dvyanshu.page>
       # Google OAuth: set to light up Google sign-in (also needs VITE_GOOGLE_CLIENT_ID
       # in the frontend build and the prod origin in the Google Console).
       - key: GOOGLE_CLIENT_ID
