@@ -29,6 +29,12 @@ function transport() {
       // 465 implies implicit TLS; other ports use STARTTLS upgrade.
       secure: config.mail.port === 465,
       auth: config.mail.user ? { user: config.mail.user, pass: config.mail.pass } : undefined,
+      // Fail fast instead of hanging ~2 minutes when the SMTP host is wrong,
+      // unreachable, or the port is blocked (which would otherwise freeze the
+      // awaiting request and leave the UI stuck on "Sending…").
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
   } else {
     cachedTransport = consoleTransport;
