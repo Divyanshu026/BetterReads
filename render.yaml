@@ -30,20 +30,24 @@ services:
       # COOKIE_DOMAIN unset so cookies scope to the API host.
       - key: COOKIE_DOMAIN
         sync: false
-      # Email (SMTP). Set MAIL_ENABLED=true and the SMTP_* values to send real
-      # verification/reset mail; otherwise links are logged to the server console.
+      # Email (SMTP) via Brevo. Host/port/from are set here; add the Brevo login
+      # as SMTP_USER and the generated SMTP key as SMTP_PASS in the dashboard
+      # (secrets) BEFORE deploying. With MAIL_ENABLED=true but creds missing,
+      # the app tries real SMTP, fails, and logs only an error (the verify link
+      # is NOT printed) — registration still succeeds but no email is sent. The
+      # console-log fallback only happens when MAIL_ENABLED is false.
       - key: MAIL_ENABLED
-        sync: false
+        value: "true"
       - key: SMTP_HOST
-        sync: false
+        value: smtp-relay.brevo.com
       - key: SMTP_PORT
-        sync: false
+        value: "587"
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS
         sync: false
       - key: SMTP_FROM
-        sync: false
+        value: BetterReads <no-reply@dvyanshu.page>
       # Google OAuth: set to light up Google sign-in (also needs VITE_GOOGLE_CLIENT_ID
       # in the frontend build and the prod origin in the Google Console).
       - key: GOOGLE_CLIENT_ID
