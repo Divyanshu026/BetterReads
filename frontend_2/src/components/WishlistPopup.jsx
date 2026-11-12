@@ -1,6 +1,6 @@
 import { appPath } from '../services/paths.js';
 import { useEffect, useRef, useState } from 'react';
-import { Heart } from 'lucide-react';
+import { Heart, X } from 'lucide-react';
 import WishlistButton from './WishlistButton.jsx';
 import { useAuth } from '../services/AuthContext.jsx';
 import { api, photoUrl } from '../services/api.js';
@@ -100,9 +100,19 @@ export default function WishlistPopup() {
               {count > 0 ? `${count} book${count === 1 ? '' : 's'} on your wishlist` : 'Keep books you love in one place'}
             </PopoverDescription>
           </div>
-          {count > 0 && (
-            <Badge variant="secondary" className="shrink-0 tabular-nums">{count}</Badge>
-          )}
+          <div className="flex shrink-0 items-center gap-1.5">
+            {count > 0 && (
+              <Badge variant="secondary" className="tabular-nums">{count}</Badge>
+            )}
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close wishlist"
+              className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </PopoverHeader>
         <Separator />
         <div className="flex max-h-[460px] min-h-0 flex-col gap-0 overflow-y-auto">

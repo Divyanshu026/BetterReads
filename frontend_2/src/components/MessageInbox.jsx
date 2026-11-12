@@ -2,6 +2,7 @@ import { appPath } from '../services/paths.js';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Search, Send, MessageCircle, X } from 'lucide-react';
 import { api, photoUrl } from '../services/api.js';
+import VerifyInlineNotice from './VerifyInlineNotice.jsx';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -45,6 +46,7 @@ export default function MessageInbox({ user, initialChatId, bookId, onUpdate }) 
   const [opening, setOpening] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [needsVerify, setNeedsVerify] = useState(false);
   const [notice, setNotice] = useState('');
   const [draft, setDraft] = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -115,7 +117,7 @@ export default function MessageInbox({ user, initialChatId, bookId, onUpdate }) 
     event.preventDefault();
     const text = draft.trim();
     if (!text || sending || !selected) return;
-    setSending(true); setError(''); setNotice('');
+    setSending(true); setError(''); setNotice(''); setNeedsVerify(false);
     try {
       const message = await api(`/api/chats/${encodeURIComponent(selected._id)}/messages`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
@@ -124,7 +126,7 @@ export default function MessageInbox({ user, initialChatId, bookId, onUpdate }) 
       setChats((items) => items.map((chat) => chat._id === selected._id ? { ...chat, lastMessage: text, updatedAt: message.createdAt } : chat));
       setDraft('');
       setNotice('Message sent.');
-    } catch (err) { setError(err.message); } finally { setSending(false); }
+    } catch (err) { setError(err.message); setNeedsVerify(err.code === 'EMAIL_NOT_VERIFIED'); } finally { setSending(false); }
   }
 
   const shown = chats.filter((chat) => `${chat.participant?.name || ''} ${chat.lastMessage || ''}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
@@ -287,7 +289,9 @@ export default function MessageInbox({ user, initialChatId, bookId, onUpdate }) 
                 </MessageGroup>
               )}
             </div>
-            {error && <p className="px-4 pb-1 text-sm text-destructive" role="alert">{error}</p>}
+            {error && (needsVerify
+              ? <div className="px-4 pb-1"><VerifyInlineNotice message={error} onBeforeOpen={() => window.dispatchEvent(new Event('betterreads:close-inbox'))} /></div>
+              : <p className="px-4 pb-1 text-sm text-destructive" role="alert">{error}</p>)}
             {notice && <p className="px-4 pb-1 text-xs text-muted-foreground" role="status">{notice}</p>}
             <div className="relative border-t border-border">
               {emojiOpen && (

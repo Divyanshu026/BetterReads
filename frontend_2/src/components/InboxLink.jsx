@@ -12,6 +12,9 @@ export default function InboxLink() {
   useEffect(() => { const params = new URLSearchParams(window.location.search); if (params.has('openInbox')) { setContext({ chatId: params.get('chat'), bookId: params.get('book') }); setTab(params.get('tab') === 'requests' ? 'requests' : 'messages'); params.delete('openInbox'); params.delete('chat'); params.delete('book'); params.delete('tab'); const query = params.toString(); window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : '') + window.location.hash); } }, []);
   useEffect(() => { if (tab && dialog.current && !dialog.current.open) dialog.current.showModal(); }, [tab]);
   useEffect(() => { const show = (event) => { opener.current = document.activeElement; setContext(event.detail || {}); setTab(event.detail?.tab || 'messages'); }; window.addEventListener('betterreads:open-inbox', show); return () => window.removeEventListener('betterreads:open-inbox', show); }, []);
+  // Let nested content (e.g. the verify-email prompt) dismiss this top-layer
+  // dialog so a different modal can show above it.
+  useEffect(() => { const onClose = () => { if (dialog.current?.open) dialog.current.close(); setTab(null); refresh(); }; window.addEventListener('betterreads:close-inbox', onClose); return () => window.removeEventListener('betterreads:close-inbox', onClose); }, [refresh]);
   function open(event, next) { opener.current = event.currentTarget; setContext({}); setTab(next); refresh(); }
   function close() { if (dialog.current?.open) dialog.current.close(); setTab(null); opener.current?.focus(); refresh(); }
   function onBackdropClick(event) { if (event.target === dialog.current) close(); }
