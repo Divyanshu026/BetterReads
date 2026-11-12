@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { api, getAllBooks } from '../services/api.js';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import VerifyInlineNotice from './VerifyInlineNotice.jsx';
 
 const nativeSelect = 'h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50';
 
@@ -16,6 +17,7 @@ export default function ExchangeRequestModal({ book, user, onClose, onCreated })
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [needsVerify, setNeedsVerify] = useState(false);
   useEffect(() => { dialog.current?.showModal(); return () => { if (dialog.current?.open) dialog.current.close(); }; }, []);
   useEffect(() => {
     let active = true;
@@ -37,7 +39,7 @@ export default function ExchangeRequestModal({ book, user, onClose, onCreated })
         } catch { warning = 'Your request was sent, but your message could not be delivered.'; }
       }
       onCreated(offer, warning);
-    } catch (err) { setError(err.message); }
+    } catch (err) { setError(err.message); setNeedsVerify(err.code === 'EMAIL_NOT_VERIFIED'); }
     finally { setBusy(false); }
   }
   return <dialog ref={dialog} className="fixed inset-0 m-auto h-fit max-h-[calc(100dvh-32px)] w-[min(480px,calc(100%-32px))] overflow-y-auto rounded-xl bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/50 font-sans" aria-labelledby="exchange-title" onCancel={(e) => { e.preventDefault(); if (!busy) onClose(); }}><div className="relative p-6">
@@ -51,7 +53,9 @@ export default function ExchangeRequestModal({ book, user, onClose, onCreated })
       <label className="flex flex-col gap-1.5 text-sm font-medium">Message to the reader (optional)<Textarea rows={3} maxLength={1000} value={message} onChange={(e) => setMessage(e.target.value)} /></label>
       <p className="text-xs text-muted-foreground">{type === 'barter' ? 'If accepted, both books are immediately marked exchanged.' : 'If accepted, the book is reserved for this request.'}</p>
       {loading && <p role="status" className="text-sm text-muted-foreground">Loading your books…</p>}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {error && (needsVerify
+        ? <VerifyInlineNotice message={error} onBeforeOpen={onClose} />
+        : <p role="alert" className="text-sm text-destructive">{error}</p>)}
       <Button type="submit" disabled={busy || loading || (type === 'barter' && !choice) || Boolean(error)}>{busy ? 'Sending…' : 'Submit request'}</Button>
     </form>
   </div></dialog>;

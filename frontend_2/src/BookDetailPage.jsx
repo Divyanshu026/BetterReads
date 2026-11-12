@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { MessageCircle, Repeat } from 'lucide-react';
 import WishlistButton from './components/WishlistButton.jsx';
 import ExchangeRequestModal from './components/ExchangeRequestModal.jsx';
+import VerifyInlineNotice from './components/VerifyInlineNotice.jsx';
 import Navbar from './components/Navbar.jsx';
 import { useAuth } from './services/AuthContext.jsx';
 import { notifyNeedsVerification } from './services/api.js';
@@ -41,6 +42,7 @@ export default function BookDetailPage({ id }) {
   const [showRequest, setShowRequest] = useState(false);
   const [requestExplanation, setRequestExplanation] = useState(false);
   const [requestNotice, setRequestNotice] = useState('');
+  const [chatNeedsVerify, setChatNeedsVerify] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState('');
   const [requestStatus, setRequestStatus] = useState('');
@@ -66,11 +68,11 @@ export default function BookDetailPage({ id }) {
 
   async function startChat(currentUser) {
     if (!book?.ownerId?._id || String(book.ownerId._id) === String(currentUser.id) || chatBusy) return;
-    setChatBusy(true); setChatError('');
+    setChatBusy(true); setChatError(''); setChatNeedsVerify(false);
     try {
       const chat = await request('/api/chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ participantId: book.ownerId._id }) });
       window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { chatId: chat._id, bookId: book._id } })); setChatBusy(false);
-    } catch (err) { setChatError(err.message); setChatBusy(false); }
+    } catch (err) { setChatError(err.message); setChatNeedsVerify(err.code === 'EMAIL_NOT_VERIFIED'); setChatBusy(false); }
   }
   // Guests get the shared auth modal; the chat opens once signed in.
   function openChat() {
@@ -126,7 +128,9 @@ export default function BookDetailPage({ id }) {
               {!user && <p className="text-sm text-muted-foreground">Sign in to save books and exchange requests to your account.</p>}
               {requestNotice && <div role="status" className="rounded-lg border border-border bg-muted px-4 py-3 text-sm">{requestNotice} <button type="button" className="font-medium hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } }))}>View requests</button></div>}
               {showRequest && user && <ExchangeRequestModal book={book} user={user} onClose={() => setShowRequest(false)} onCreated={(_offer, warning) => { setShowRequest(false); setRequestStatus('pending'); setRequestNotice(warning || 'Request sent.'); }} />}
-              {chatError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{chatError}</div>}
+              {chatError && (chatNeedsVerify
+                ? <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3"><VerifyInlineNotice message={chatError} /></div>
+                : <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{chatError}</div>)}
             </section>
           </div>
         )}
