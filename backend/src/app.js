@@ -21,6 +21,12 @@ const wishlistRoutes = require('./routes/wishlist');
 // Create the Express application
 const app = express();
 
+// Behind Render's (and most PaaS) load balancer, the client IP arrives in the
+// X-Forwarded-For header. Trust exactly one proxy hop so express-rate-limit can
+// read the real IP without throwing, while not trusting arbitrary hops (which
+// would let clients spoof the header and evade the limiter).
+app.set('trust proxy', 1);
+
 // Security headers (Helmet): helps protect against common web vulnerabilities
 app.use(helmet());
 // CORS: allow only the configured frontend origins.
