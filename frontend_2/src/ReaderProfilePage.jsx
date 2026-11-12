@@ -126,7 +126,7 @@ export default function ReaderProfilePage({ readerId, mine = false }) {
           <DialogContent className="flex max-h-[90dvh] w-full flex-col gap-0 p-0 sm:max-w-2xl">
             <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-6 py-4">
               <DialogTitle className="font-heading text-xl font-semibold">Edit profile</DialogTitle>
-              <DialogDescription className="sr-only">Update how other readers see you on BetterReads.</DialogDescription>
+              <DialogDescription className="sr-only">Update how other readers see you on Bettereads.</DialogDescription>
             </DialogHeader>
             <form onSubmit={saveProfile} className="flex min-h-0 flex-1 flex-col">
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
@@ -193,7 +193,7 @@ export default function ReaderProfilePage({ readerId, mine = false }) {
           </div>
           {!visibleBooks.length
             ? (isMine
-                ? <Card><CardContent className="flex items-center gap-4 py-6 max-sm:flex-col max-sm:text-center"><div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><BookOpen className="size-6" /></div><div className="flex-1"><h3 className="font-heading text-lg font-medium">Your shelf is waiting.</h3><p className="text-sm text-muted-foreground">You haven't listed any books yet. Share your first book with the BetterReads community!</p></div><Button asChild variant="outline"><a href={appPath('/list-book')}><Plus data-icon="inline-start" /> List your first book</a></Button></CardContent></Card>
+                ? <Card><CardContent className="flex items-center gap-4 py-6 max-sm:flex-col max-sm:text-center"><div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><BookOpen className="size-6" /></div><div className="flex-1"><h3 className="font-heading text-lg font-medium">Your shelf is waiting.</h3><p className="text-sm text-muted-foreground">You haven't listed any books yet. Share your first book with the Bettereads community!</p></div><Button asChild variant="outline"><a href={appPath('/list-book')}><Plus data-icon="inline-start" /> List your first book</a></Button></CardContent></Card>
                 : <p className="py-4 text-sm text-muted-foreground">No books are listed right now.</p>)
             : <div className="catalog-grid">{visibleBooks.map((book, index) => <div className="profile-listing" key={book._id}><BookCard index={index} book={toCard(book)} /><div className="mt-2.5 flex items-center gap-2 border-t border-border pt-2.5"><Badge variant="outline" className="mr-auto capitalize">{book.status || 'available'}</Badge>{isMine && book.status === 'available' && <><Button variant="ghost" size="sm" onClick={() => setEditBook(book)}>Edit</Button><Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteBook(book)}>Delete</Button></>}</div></div>)}</div>}
         </section>}

@@ -70,7 +70,7 @@ export default function ResetPasswordPage() {
             <CardDescription>
               {done
                 ? 'Your password has been changed and you have been signed out everywhere. Log in with your new password.'
-                : 'Set a new password for your BetterReads account.'}
+                : 'Set a new password for your Bettereads account.'}
             </CardDescription>
           </CardHeader>
           <CardContent>

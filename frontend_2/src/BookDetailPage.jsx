@@ -5,6 +5,7 @@ import WishlistButton from './components/WishlistButton.jsx';
 import ExchangeRequestModal from './components/ExchangeRequestModal.jsx';
 import Navbar from './components/Navbar.jsx';
 import { useAuth } from './services/AuthContext.jsx';
+import { notifyNeedsVerification } from './services/api.js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +22,13 @@ async function request(path, options = {}) {
   const type = response.headers.get('content-type') || '';
   if (!type.includes('application/json')) throw new Error('Unable to reach the server. Please try again.');
   const data = await response.json();
-  if (!response.ok) throw new Error(data?.error?.message || 'Unable to complete this request.');
+  if (!response.ok) {
+    // Mirror api(): surface the soft email-verification gate centrally.
+    if (data?.error?.code === 'EMAIL_NOT_VERIFIED') notifyNeedsVerification();
+    const error = new Error(data?.error?.message || 'Unable to complete this request.');
+    error.code = data?.error?.code;
+    throw error;
+  }
   return data;
 }
 

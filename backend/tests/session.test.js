@@ -7,7 +7,7 @@ process.env.ACCESS_TOKEN_TTL = '2s';
 // pushes { to, type, link } so tests can pull the latest verify/reset link.
 const sentMail = [];
 jest.mock('../src/services/mailer', () => ({
-  sendVerificationEmail: async (user, link) => { sentMail.push({ to: user.email, type: 'verify', link }); },
+  sendVerificationEmail: async (user, link, code) => { sentMail.push({ to: user.email, type: 'verify', link, code }); },
   sendPasswordResetEmail: async (user, link) => { sentMail.push({ to: user.email, type: 'reset', link }); },
 }));
 
@@ -53,6 +53,8 @@ const tokenFromLink = (type) => {
   const entry = [...sentMail].reverse().find((m) => m.type === type);
   return entry ? new URL(entry.link).searchParams.get('token') : null;
 };
+// The 6-digit code from the most recent verification email.
+const latestCode = () => [...sentMail].reverse().find((m) => m.type === 'verify')?.code;
 // Did a Set-Cookie header set this cookie to a non-empty value?
 const setsCookie = (res, name) =>
   (res.headers['set-cookie'] || []).some((c) => new RegExp(`^${name}=[^;]+`).test(c) && !c.includes(`${name}=;`));
@@ -84,6 +86,56 @@ describe('registration + email verification', () => {
   test('an invalid verify token is rejected', async () => {
     const res = await request(app).get('/api/auth/verify-email?token=not-a-real-token');
     expect(res.status).toBe(400);
+  });
+
+  test('the typed 6-digit code verifies the signed-in account', async () => {
+    const client = agent();
+    await register(client, { email: 'code@example.com' });
+    const code = latestCode();
+    expect(code).toMatch(/^\d{6}$/);
+    const res = await client.post('/api/auth/verify-code').send({ code });
+    expect(res.status).toBe(200);
+    expect(res.body.user.emailVerified).toBe(true);
+    expect((await User.findOne({ email: 'code@example.com' })).emailVerified).toBe(true);
+  });
+
+  test('a wrong code fails, and the code is burned after too many attempts', async () => {
+    const client = agent();
+    await register(client, { email: 'wrong@example.com' });
+    const realCode = latestCode();
+    const bad = realCode === '000000' ? '111111' : '000000';
+    // Five wrong guesses: first four are "incorrect", the fifth hits the cap.
+    for (let i = 0; i < 5; i += 1) {
+      const res = await client.post('/api/auth/verify-code').send({ code: bad });
+      expect(res.status).toBe(400);
+    }
+    // Even the correct code no longer works once burned.
+    const after = await client.post('/api/auth/verify-code').send({ code: realCode });
+    expect(after.status).toBe(400);
+    expect((await User.findOne({ email: 'wrong@example.com' })).emailVerified).toBe(false);
+  });
+
+  test('verify-code requires authentication and rejects a malformed code', async () => {
+    const anon = await request(app).post('/api/auth/verify-code').send({ code: '123456' });
+    expect(anon.status).toBe(401);
+    const client = agent();
+    await register(client, { email: 'malformed@example.com' });
+    const res = await client.post('/api/auth/verify-code').send({ code: 'abc' });
+    expect(res.status).toBe(400);
+  });
+
+  test('resending issues a fresh code and invalidates the previous one', async () => {
+    const client = agent();
+    await register(client, { email: 'resend@example.com' });
+    const firstCode = latestCode();
+    const resent = await client.post('/api/auth/resend-verification');
+    expect(resent.status).toBe(200);
+    const secondCode = latestCode();
+    // The old code is now invalid; the new one works.
+    const oldTry = await client.post('/api/auth/verify-code').send({ code: firstCode });
+    if (firstCode !== secondCode) expect(oldTry.status).toBe(400);
+    const newTry = await client.post('/api/auth/verify-code').send({ code: secondCode });
+    expect(newTry.status).toBe(200);
   });
 });
 

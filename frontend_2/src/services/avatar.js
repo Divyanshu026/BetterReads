@@ -1,4 +1,4 @@
-// A BetterReads-style fallback avatar for users without a photo. The icon and
+// A Bettereads-style fallback avatar for users without a photo. The icon and
 // colour are chosen deterministically from a stable per-user key, so the same
 // reader always gets the same avatar across renders, pages, and visits.
 //
