@@ -21,7 +21,7 @@ const REPORT_ISSUE_URL = 'https://github.com/Divyanshu026/BetterReads/issues/new
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const { user, openAuth, logout } = useAuth();
+  const { user, openAuth, requestLogout } = useAuth();
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     let previous = window.scrollY;
@@ -36,6 +36,11 @@ export default function Navbar() {
     window.addEventListener('keydown', onKeyDown);
     return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('keydown', onKeyDown); };
   }, [open]);
+  // Broadcast navbar visibility so top-anchored overlays (e.g. toasts) can sit
+  // just below it when shown and slide to the top edge when it hides on scroll.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('betterreads:nav-visibility', { detail: { hidden } }));
+  }, [hidden]);
   const path = currentPath();
   const active = (href) => href === '/' ? path === '/' : path === href || (href === '/books' && path.startsWith('/books/'));
   const navLinks = (items, className) => items.map(([label, href]) => (
@@ -111,7 +116,7 @@ export default function Navbar() {
                   <a href={REPORT_ISSUE_URL} target="_blank" rel="noopener noreferrer"><Flag aria-hidden="true" /> Report an issue</a>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={() => logout()}>
+                <DropdownMenuItem variant="destructive" onSelect={() => requestLogout()}>
                   <LogOut aria-hidden="true" /> Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -166,7 +171,7 @@ export default function Navbar() {
               <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('betterreads:open-wishlist')); }}>Wishlist</button>
               <a href={REPORT_ISSUE_URL} target="_blank" rel="noopener noreferrer" className="rounded-md px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted" onClick={() => setOpen(false)}>Report an issue</a>
               <Separator className="my-1" />
-              <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-destructive transition-colors hover:bg-muted" onClick={() => { setOpen(false); logout(); }}>Log out</button>
+              <button type="button" className="rounded-md px-3 py-3 text-left text-sm font-medium text-destructive transition-colors hover:bg-muted" onClick={() => { setOpen(false); requestLogout(); }}>Log out</button>
             </>
           ) : (
             <>

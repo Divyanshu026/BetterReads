@@ -1,6 +1,6 @@
 import { appPath } from './services/paths.js';
 import { useEffect, useState } from 'react';
-import { ArrowUp, ArrowDown, BookText, MapPin, MessageCircle, PenSquare, Search, Share2, X } from 'lucide-react';
+import { ArrowUp, ArrowDown, BookText, CircleAlert, Info, MapPin, MessageCircle, PenSquare, Search, Share2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import PageShell from './components/PageShell.jsx';
 import BrandAvatar from './components/BrandAvatar.jsx';
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertTitle, AlertDescription } from '@/components/reui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from '@/components/ui/select';
 import { FieldGroup, Field, FieldLabel } from '@/components/ui/field';
@@ -127,8 +128,8 @@ export default function CommunityPage() {
     <PageShell>
       <main className="min-h-[calc(100vh-92px)] bg-background text-foreground font-sans">
         <div className="mx-auto w-full max-w-[1200px] px-6 py-6 max-sm:px-4">
-          {error && <div role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
-          {notice && <div role="status" className="mb-5 rounded-lg border border-border bg-muted px-4 py-3 text-sm">{notice}</div>}
+          {error && <Alert variant="destructive" className="mb-5"><CircleAlert /><AlertTitle>{error}</AlertTitle></Alert>}
+          {notice && <Alert className="mb-5"><Info /><AlertTitle>{notice}</AlertTitle></Alert>}
 
           <Card className="min-h-[calc(100vh-92px-3rem)] gap-0 overflow-hidden p-0">
             <div className="grid h-full grid-cols-[240px_minmax(0,1fr)] items-stretch max-[680px]:grid-cols-1">
@@ -287,21 +288,25 @@ export default function CommunityPage() {
                             </button>
                           </div>
                           {expanded === post._id && (
-                            <div className="mt-1 flex flex-col gap-3 border-t border-border pt-4">
+                            <div className="mt-1 flex flex-col gap-3 border-t border-border pt-4 pl-3">
                               {!comments[post._id] ? (
                                 <p className="text-sm text-muted-foreground">Loading replies…</p>
                               ) : comments[post._id].length ? (
-                                comments[post._id].map((entry) => (
-                                  <div className="flex gap-2 text-sm" key={entry._id}>
-                                    <BrandAvatar user={entry.author} className="size-7" fallbackClassName="text-xs" />
-                                    <div className="min-w-0 flex-1">
-                                      <a className="font-medium hover:underline" href={appPath(`/readers/${entry.author?._id}`)}>
-                                        {entry.author?.username ? `@${entry.author.username}` : `u/${(entry.author?.name || 'reader').replace(/\s+/g, '').toLowerCase()}`}
-                                      </a>
-                                      <p className="mt-1 whitespace-pre-wrap text-foreground/90">{entry.body}</p>
+                                // Replies are indented and share one continuous
+                                // vertical timeline line (no node circles).
+                                <div className="ml-1 flex flex-col border-l border-border">
+                                  {comments[post._id].map((entry) => (
+                                    <div className="relative flex gap-2.5 pb-4 pl-5 text-sm last:pb-0" key={entry._id}>
+                                      <BrandAvatar user={entry.author} className="size-7 shrink-0" fallbackClassName="text-xs" />
+                                      <div className="min-w-0 flex-1">
+                                        <a className="font-medium hover:underline" href={appPath(`/readers/${entry.author?._id}`)}>
+                                          {entry.author?.username ? `@${entry.author.username}` : `u/${(entry.author?.name || 'reader').replace(/\s+/g, '').toLowerCase()}`}
+                                        </a>
+                                        <p className="mt-1 whitespace-pre-wrap text-foreground/90">{entry.body}</p>
+                                      </div>
                                     </div>
-                                  </div>
-                                ))
+                                  ))}
+                                </div>
                               ) : (
                                 <p className="text-sm text-muted-foreground">Be the first to reply.</p>
                               )}

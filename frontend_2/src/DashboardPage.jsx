@@ -1,15 +1,16 @@
 import { appPath } from './services/paths.js';
 import { useEffect, useState } from 'react';
-import { BookOpen, BookCheck, Repeat, Heart, MessageSquare, Bell, Plus, Sun, Moon, ArrowUpRight, MapPin, Calendar, Pencil, AlertTriangle, MailCheck, MailWarning } from 'lucide-react';
+import { BookOpen, BookCheck, Repeat, Heart, MessageSquare, Bell, Plus, ArrowUpRight, MapPin, Calendar, Pencil, AlertTriangle, MailCheck, MailWarning, CircleAlert, Info } from 'lucide-react';
 import PageShell from './components/PageShell.jsx';
 import BrandAvatar from './components/BrandAvatar.jsx';
 import { useAuth } from './services/AuthContext.jsx';
 import useInboxSummary from './services/useInboxSummary.js';
 import { normalizeUsername, usernameError } from './services/username.js';
-import { api, getAllBooks, localGet, localSet, photoUrl } from './services/api.js';
+import { api, getAllBooks, photoUrl } from './services/api.js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from '@/components/ui/card';
+import { Alert, AlertTitle } from '@/components/reui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -38,7 +39,6 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState(null);
   const [books, setBooks] = useState([]); const [wishlist, setWishlist] = useState(null); const [offers, setOffers] = useState(null);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
-  const [theme, setTheme] = useState(() => localGet('betterreads.dash-theme', 'light'));
   const [editing, setEditing] = useState(() => new URLSearchParams(window.location.search).get('edit') === '1'); const [saving, setSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null); const [avatarPreview, setAvatarPreview] = useState('');
   const [editBook, setEditBook] = useState(null);
@@ -48,7 +48,6 @@ export default function DashboardPage() {
   // Username is now a real, server-enforced field on the profile.
   const username = profile?.username || user?.username || '';
 
-  useEffect(() => { localSet('betterreads.dash-theme', theme); }, [theme]);
   useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); }, [avatarPreview]);
 
   async function loadBooks() { if (id) setBooks(await getAllBooks(`&sellerId=${encodeURIComponent(id)}`)); }
@@ -96,15 +95,15 @@ export default function DashboardPage() {
     { icon: Bell, label: 'Pending requests', count: pending, action: () => openInbox('requests'), cta: 'Review' },
   ];
 
-  return <PageShell><div className={cn(theme === 'dark' && 'dark')}>
+  return <PageShell><div>
     <main className="min-h-[calc(100vh-92px)] bg-background text-foreground font-sans">
       <div className="mx-auto w-full max-w-[1800px] px-6 py-6 max-sm:px-4">
         {authLoading ? <div className="py-14 text-muted-foreground" role="status">Loading your dashboard…</div>
           : authError && !user ? <div className="flex flex-col items-start gap-3 py-14" role="alert"><p className="text-muted-foreground">{authError}</p><Button variant="outline" onClick={refresh}>Try again</Button></div>
           : !user ? <div className="flex min-h-[calc(100vh-92px-3rem)] flex-col items-center justify-center gap-4 py-14 text-center"><div className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><BookOpen className="size-6" /></div><div><h1 className="font-heading text-2xl font-bold tracking-tight">Your reading dashboard</h1><p className="mt-1 max-w-sm text-sm text-muted-foreground">Log in to manage your listings, wishlist, and requests.</p></div><Button onClick={() => openAuth('login', 'Log in to open your dashboard.')}>Log in or sign up</Button></div>
           : <>
-          {notice && <div className="mb-5 rounded-lg border border-border bg-muted px-4 py-3 text-sm" role="status">{notice}</div>}
-          {error && <div className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">{error}</div>}
+          {notice && <Alert className="mb-5"><Info /><AlertTitle>{notice}</AlertTitle></Alert>}
+          {error && <Alert variant="destructive" className="mb-5"><CircleAlert /><AlertTitle>{error}</AlertTitle></Alert>}
 
 
           <Card className="min-h-[calc(100vh-92px-3rem)] gap-0 overflow-hidden p-0">
@@ -167,7 +166,6 @@ export default function DashboardPage() {
                   <h1 className="font-heading text-2xl font-bold tracking-tight">Dashboard</h1>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? <Sun /> : <Moon />}</Button>
                   <Button asChild><a href={appPath('/list-book')}><Plus data-icon="inline-start" /> List a book</a></Button>
                 </div>
               </div>

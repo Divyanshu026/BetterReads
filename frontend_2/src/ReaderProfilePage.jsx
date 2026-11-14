@@ -9,7 +9,9 @@ import { normalizeUsername, usernameError } from './services/username.js';
 import { api, getAllBooks, localGet, localSet, photoUrl } from './services/api.js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertTitle } from '@/components/reui/alert';
 import { Badge } from '@/components/ui/badge';
+import { CircleAlert, Info } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -115,8 +117,8 @@ export default function ReaderProfilePage({ readerId, mine = false }) {
         </CardContent>
       </Card>
 
-      {notice && <div role="status" className="mt-4 rounded-lg border border-border bg-muted px-4 py-3 text-sm">{notice}</div>}
-      {error && <div role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
+      {notice && <Alert className="mt-4"><Info /><AlertTitle>{notice}</AlertTitle></Alert>}
+      {error && <Alert variant="destructive" className="mt-4"><CircleAlert /><AlertTitle>{error}</AlertTitle></Alert>}
 
       {isMine && profile && (
         <Dialog
@@ -200,13 +202,13 @@ export default function ReaderProfilePage({ readerId, mine = false }) {
 
         {isMine && currentTab === 'activity' && <section aria-label="Activity">
           <div className="mb-5"><span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">From the community</span><h2 className="font-heading text-2xl font-bold tracking-tight">Reading activity</h2></div>
-          {communityError && <div role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{communityError}</div>}
+          {communityError && <Alert variant="destructive" className="mb-4"><CircleAlert /><AlertTitle>{communityError}</AlertTitle></Alert>}
           {activity.length ? <div className="flex flex-col">{activity.map((item) => <article key={item.id} className="border-t border-border py-4 first:border-t-0 first:pt-0"><Badge variant="secondary" className="mb-2">{item.type}</Badge><p className="text-base font-medium break-words">{item.text}</p>{item.date && <time className="text-xs text-muted-foreground" dateTime={item.date}>{new Date(item.date).toLocaleDateString()}</time>}</article>)}</div> : <p className="py-4 text-sm text-muted-foreground">No activity yet. <a className="font-medium text-foreground hover:underline" href={appPath('/community')}>Join a discussion</a>.</p>}
         </section>}
 
         {!isMine && currentTab === 'posts' && <section aria-label="Community posts">
           <div className="mb-5"><span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">From the community</span><h2 className="font-heading text-2xl font-bold tracking-tight">Community posts</h2></div>
-          {communityError && <div role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{communityError}</div>}
+          {communityError && <Alert variant="destructive" className="mb-4"><CircleAlert /><AlertTitle>{communityError}</AlertTitle></Alert>}
           {publicPosts.length ? <div className="flex flex-col">{publicPosts.map((post) => <article key={post._id} className="border-t border-border py-4 first:border-t-0 first:pt-0"><Badge variant="secondary" className="mb-2">{post.category}</Badge><p className="text-base font-medium"><a className="hover:underline" href={appPath('/community')}>{post.title}</a></p><p className="mt-1 text-sm whitespace-pre-wrap text-muted-foreground">{post.body}</p>{post.createdAt && <time className="mt-1 block text-xs text-muted-foreground" dateTime={post.createdAt}>{new Date(post.createdAt).toLocaleDateString()}</time>}</article>)}</div> : <p className="py-4 text-sm text-muted-foreground">No community posts available here yet.</p>}
         </section>}
 

@@ -38,40 +38,61 @@
   --sidebar-accent-foreground: #39412d;
   --sidebar-border: #ded5c7;
   --sidebar-ring: #922323;
+  --destructive-foreground: var(--color-red-800);
+  --success: var(--color-emerald-500);
+  --success-foreground: var(--color-emerald-900);
+  --info: var(--color-violet-500);
+  --info-foreground: var(--color-violet-900);
+  --warning: var(--color-yellow-500);
+  --warning-foreground: var(--color-yellow-900);
+  --invert: var(--color-zinc-900);
+  --invert-foreground: var(--color-zinc-50);
 }
 
 .dark {
-  --background: #1a2016;
+  /* Warm espresso/brown dark mode (not olive green), to match the warm cream +
+     brick-red + gold brand. Surfaces are warm dark browns; text stays cream and
+     the primary stays gold. */
+  --background: #1c1613;
   --foreground: #f1ece0;
-  --card: #232a1d;
+  --card: #251d18;
   --card-foreground: #f1ece0;
-  --popover: #232a1d;
+  --popover: #251d18;
   --popover-foreground: #f1ece0;
   --primary: #e3c98b;
   --primary-foreground: #2a2213;
-  --secondary: #2e3626;
+  --secondary: #332820;
   --secondary-foreground: #f1ece0;
-  --muted: #2b3323;
-  --muted-foreground: #a9b199;
-  --accent: #2e3626;
+  --muted: #2b211b;
+  --muted-foreground: #b2a693;
+  --accent: #332820;
   --accent-foreground: #f1ece0;
   --destructive: #d8695f;
   --border: #ffffff1a;
   --input: #ffffff26;
   --ring: #e3c98b;
   --chart-1: #e3c98b;
-  --chart-2: #b7c29a;
-  --chart-3: #8f9b74;
-  --chart-4: #6b7656;
-  --chart-5: #4c5540;
-  --sidebar: #232a1d;
+  --chart-2: #d1a86b;
+  --chart-3: #c08552;
+  --chart-4: #a9603f;
+  --chart-5: #8a4432;
+  --sidebar: #251d18;
   --sidebar-foreground: #f1ece0;
   --sidebar-primary: #e3c98b;
   --sidebar-primary-foreground: #2a2213;
-  --sidebar-accent: #2e3626;
+  --sidebar-accent: #332820;
   --sidebar-accent-foreground: #f1ece0;
   --sidebar-border: #ffffff1a;
   --sidebar-ring: #e3c98b;
+  --destructive-foreground: var(--color-red-600);
+  --success: var(--color-emerald-500);
+  --success-foreground: var(--color-emerald-600);
+  --info: var(--color-violet-500);
+  --info-foreground: var(--color-violet-600);
+  --warning: var(--color-yellow-500);
+  --warning-foreground: var(--color-yellow-600);
+  --invert: var(--color-zinc-700);
+  --invert-foreground: var(--color-zinc-50);
 }
 
 @theme inline {
@@ -120,6 +141,15 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --color-invert-foreground: var(--invert-foreground);
+  --color-invert: var(--invert);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning: var(--warning);
+  --color-info-foreground: var(--info-foreground);
+  --color-info: var(--info);
+  --color-success-foreground: var(--success-foreground);
+  --color-success: var(--success);
+  --color-destructive-foreground: var(--destructive-foreground);
 }
 
 @layer base {
