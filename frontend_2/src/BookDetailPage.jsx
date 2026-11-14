@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertTitle } from '@/components/reui/alert';
+import { CircleAlert, Info } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
@@ -126,11 +128,11 @@ export default function BookDetailPage({ id }) {
               </div>
               {requestExplanation && <p className="text-sm text-muted-foreground" role="status">The owner has not offered this book for exchange or borrowing yet. <button type="button" className="font-medium text-foreground hover:underline" onClick={openChat}>Message the lister</button> to ask about it.</p>}
               {!user && <p className="text-sm text-muted-foreground">Sign in to save books and exchange requests to your account.</p>}
-              {requestNotice && <div role="status" className="rounded-lg border border-border bg-muted px-4 py-3 text-sm">{requestNotice} <button type="button" className="font-medium hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } }))}>View requests</button></div>}
+              {requestNotice && <Alert><Info /><AlertTitle>{requestNotice} <button type="button" className="font-medium underline-offset-2 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('betterreads:open-inbox', { detail: { tab: 'requests' } }))}>View requests</button></AlertTitle></Alert>}
               {showRequest && user && <ExchangeRequestModal book={book} user={user} onClose={() => setShowRequest(false)} onCreated={(_offer, warning) => { setShowRequest(false); setRequestStatus('pending'); setRequestNotice(warning || 'Request sent.'); }} />}
               {chatError && (chatNeedsVerify
-                ? <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3"><VerifyInlineNotice message={chatError} /></div>
-                : <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{chatError}</div>)}
+                ? <div className="rounded-lg border border-destructive/30 bg-destructive/4 px-3 py-2.5"><VerifyInlineNotice message={chatError} /></div>
+                : <Alert variant="destructive"><CircleAlert /><AlertTitle>{chatError}</AlertTitle></Alert>)}
             </section>
           </div>
         )}

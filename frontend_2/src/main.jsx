@@ -12,7 +12,7 @@ import DashboardPage from './DashboardPage.jsx';
 import VerifyEmailPage from './VerifyEmailPage.jsx';
 import ResetPasswordPage from './ResetPasswordPage.jsx';
 import { AuthProvider } from './services/AuthContext.jsx';
-import { Toaster } from '@/components/ui/sonner';
+import NavAwareToaster from './components/NavAwareToaster.jsx';
 
 const path = currentPath().replace(/\/$/, '');
 
@@ -45,7 +45,7 @@ createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthProvider initialAuth={initialAuth}>
       {page}
-      <Toaster position="top-center" richColors closeButton offset={104} mobileOffset={84} />
+      <NavAwareToaster />
     </AuthProvider>
   </React.StrictMode>,
 );

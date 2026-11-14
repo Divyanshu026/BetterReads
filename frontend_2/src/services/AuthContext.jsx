@@ -1,10 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { LogOut, X } from 'lucide-react';
 import { apiBase, getCurrentUser } from './api.js';
 import { appPath } from './paths.js';
 import { isSignedIn, markSignedOut } from './auth.js';
 import AuthModal from '../components/AuthModal.jsx';
 import VerifyCodeModal from '../components/VerifyCodeModal.jsx';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertTitle, AlertDescription } from '@/components/reui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 const AuthContext = createContext(null);
 
@@ -23,6 +27,8 @@ export function AuthProvider({ children, initialAuth = null }) {
   const [modal, setModal] = useState({ open: false, mode: 'login', step: 'auth', prompt: '', user: null });
   // Separate open state for the typed-code email verification modal.
   const [verifyCodeOpen, setVerifyCodeOpen] = useState(false);
+  // Open state for the "are you sure you want to log out?" confirmation.
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const pendingAction = useRef(null);
 
   // Direct /login and /signup links open the shared modal in the right mode,
@@ -100,15 +106,28 @@ export function AuthProvider({ children, initialAuth = null }) {
   const promptProfileCompletion = useCallback(() => {
     if (window.location.pathname.replace(/\/$/, '').endsWith('/dashboard')) return;
     window.setTimeout(() => {
-      toast('Complete your profile', {
+      // A fully custom card so the title, description, and actions lay out
+      // cleanly (sonner's default action layout cramps them) and stay on the
+      // warm palette — brand-red primary button, neutral card, no green.
+      toast.custom((id) => (
+        <div className="flex w-[380px] max-w-[calc(100vw-32px)] items-center gap-3 rounded-xl border border-border bg-popover px-3.5 py-2.5 text-popover-foreground shadow-lg">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <strong className="text-sm font-semibold leading-tight">Complete your profile</strong>
+            <p className="truncate text-xs text-muted-foreground">Add a photo, bio, and city to get noticed.</p>
+          </div>
+          <Button size="sm" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => { toast.dismiss(id); window.location.assign(`${appPath('/dashboard')}?edit=1`); }}>Complete</Button>
+          <button
+            type="button"
+            aria-label="Skip for now"
+            onClick={() => toast.dismiss(id)}
+            className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      ), {
         id: 'complete-profile',
-        description: 'Add a photo, bio, and city so other readers get to know you.',
         duration: 10000,
-        action: {
-          label: 'Complete profile',
-          onClick: () => window.location.assign(`${appPath('/dashboard')}?edit=1`),
-        },
-        cancel: { label: 'Skip for now', onClick: () => {} },
       });
     }, 400);
   }, []);
@@ -148,16 +167,20 @@ export function AuthProvider({ children, initialAuth = null }) {
 
   // Revoke the session server-side (best-effort — clear locally regardless so
   // the UI never gets stuck signed in), then clear the local hint.
+  // Perform the actual sign-out. Lands on /login, which renders the home page
+  // with the login popup open, so the signed-out user never sits on a now-empty
+  // protected view and has a clear way back in.
   const logout = useCallback(() => {
     fetch(`${apiBase}/api/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
     markSignedOut();
     setUser(null);
     setError('');
-    // Send the signed-out user to the public home page so they never land on a
-    // now-empty protected view (dashboard, inbox). A full navigation also
-    // guarantees any per-page signed-in state is cleared.
-    window.location.assign(appPath('/'));
+    window.location.assign(appPath('/login'));
   }, []);
+
+  // Open the "are you sure?" confirmation before logging out. Call sites use
+  // this; the dialog's confirm button runs logout().
+  const requestLogout = useCallback(() => setLogoutConfirmOpen(true), []);
 
   // Ask the server to re-send the verification email for the signed-in account.
   const resendVerification = useCallback(async () => {
@@ -201,8 +224,8 @@ export function AuthProvider({ children, initialAuth = null }) {
   }, [promptVerification]);
 
   const value = useMemo(
-    () => ({ user, loading, error, refresh, requireAuth, openAuth, closeModal, logout, resendVerification, promptVerification, openVerifyCode }),
-    [user, loading, error, refresh, requireAuth, openAuth, closeModal, logout, resendVerification, promptVerification, openVerifyCode],
+    () => ({ user, loading, error, refresh, requireAuth, openAuth, closeModal, logout, requestLogout, resendVerification, promptVerification, openVerifyCode }),
+    [user, loading, error, refresh, requireAuth, openAuth, closeModal, logout, requestLogout, resendVerification, promptVerification, openVerifyCode],
   );
 
   return (
@@ -225,6 +248,23 @@ export function AuthProvider({ children, initialAuth = null }) {
         onVerified={handleCodeVerified}
         onOpenChange={setVerifyCodeOpen}
       />
+      <Dialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl font-semibold">Log out of Bettereads?</DialogTitle>
+            <DialogDescription>You can sign back in anytime with your email or Google.</DialogDescription>
+          </DialogHeader>
+          <Alert>
+            <LogOut />
+            <AlertTitle>You'll be signed out on this device</AlertTitle>
+            <AlertDescription>Any unsent messages or drafts won't be saved.</AlertDescription>
+          </Alert>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLogoutConfirmOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { setLogoutConfirmOpen(false); logout(); }}>Log out</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AuthContext.Provider>
   );
 }
