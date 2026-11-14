@@ -1,6 +1,7 @@
 import { appPath } from './services/paths.js';
 import { useEffect, useRef, useState } from 'react';
 import BookCard from './components/BookCard.jsx';
+import BookCardSkeleton from './components/BookCardSkeleton.jsx';
 import Navbar from './components/Navbar.jsx';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -86,6 +87,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [liveBooks, setLiveBooks] = useState([]);
   const [listingError, setListingError] = useState('');
+  const [booksLoading, setBooksLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
   const [saved, setSaved] = useState(() => readSessionList('betterreads.saved'));
   const [faq, setFaq] = useState(0);
@@ -183,6 +185,8 @@ export default function App() {
         setListingError('');
       } catch (error) {
         if (error.name !== 'AbortError') setListingError('Reader listings are unavailable right now.');
+      } finally {
+        if (!controller.signal.aborted) setBooksLoading(false);
       }
     }
     loadListings();
@@ -306,7 +310,9 @@ export default function App() {
             </div>
           </div>
           <div className="mt-5 grid auto-cols-[280px] grid-flow-col gap-5 overflow-x-auto pb-2 [scroll-snap-type:x_mandatory] [&>*]:[scroll-snap-align:start] max-md:auto-cols-[minmax(220px,80%)]" ref={track} onScroll={updateCarousel} aria-live="polite" aria-label="Book listings">
-            {shown.length ? (
+            {booksLoading ? (
+              <><p role="status" className="sr-only">Loading reader listings…</p><BookCardSkeleton count={6} /></>
+            ) : shown.length ? (
               shown.map((book, index) => <BookCard key={bookKey(book)} book={book} index={index} />)
             ) : (
               <p className="text-sm text-muted-foreground">No books match your search. <button className="font-medium text-brand-red hover:underline" onClick={browseAll}>Show all books</button></p>
