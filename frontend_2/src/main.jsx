@@ -45,7 +45,7 @@ createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthProvider initialAuth={initialAuth}>
       {page}
-      <Toaster position="bottom-right" richColors closeButton />
+      <Toaster position="top-center" richColors closeButton offset={104} mobileOffset={84} />
     </AuthProvider>
   </React.StrictMode>,
 );

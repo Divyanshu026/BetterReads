@@ -44,5 +44,17 @@ const BookSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Indexes matching the real query/sort patterns in booksController.listBooks,
+// which otherwise does a full collection scan on every catalog/profile load.
+// Each compound index puts the equality field first, then the default sort key
+// (createdAt), per MongoDB's equality-sort-range ordering.
+// Catalog/home: filter by status, newest first.
+BookSchema.index({ status: 1, createdAt: -1 });
+// Dashboard/reader profile: a user's own listings, newest first.
+BookSchema.index({ ownerId: 1, createdAt: -1 });
+// Secondary filters applied on the catalog.
+BookSchema.index({ genre: 1 });
+BookSchema.index({ 'location.city': 1 });
+
 // Export the Book model
 module.exports = mongoose.model('Book', BookSchema);

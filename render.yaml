@@ -40,8 +40,10 @@ services:
         value: "true"
       - key: SMTP_HOST
         value: smtp-relay.brevo.com
+      # Brevo also serves SMTP on 2525; prefer it because cloud hosts (Render)
+      # often block/throttle outbound 587, which shows up as "Connection timeout".
       - key: SMTP_PORT
-        value: "587"
+        value: "2525"
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS
