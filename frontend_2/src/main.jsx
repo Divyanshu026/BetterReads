@@ -13,6 +13,7 @@ import VerifyEmailPage from './VerifyEmailPage.jsx';
 import ResetPasswordPage from './ResetPasswordPage.jsx';
 import { AuthProvider } from './services/AuthContext.jsx';
 import NavAwareToaster from './components/NavAwareToaster.jsx';
+import { Analytics } from '@vercel/analytics/react';
 
 const path = currentPath().replace(/\/$/, '');
 
@@ -46,6 +47,7 @@ createRoot(document.getElementById('root')).render(
     <AuthProvider initialAuth={initialAuth}>
       {page}
       <NavAwareToaster />
+      <Analytics />
     </AuthProvider>
   </React.StrictMode>,
 );

@@ -4,7 +4,7 @@
   "build": {
     "env": {
       "VITE_API_URL": "https://betterreads-api-0ni0.onrender.com",
-      "VITE_GOOGLE_CLIENT_ID": "128415617631-ovaoc1sreqa7fildpaitov07vje0srj6.apps.googleusercontent.com"
+      "VITE_GOOGLE_CLIENT_ID": "1006972591902-gm39e90rqna0gqvq332vm5r1j5bskb8s.apps.googleusercontent.com"
     }
   }
 }
